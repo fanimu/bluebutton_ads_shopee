@@ -4,7 +4,8 @@
 // ==========================================
 function resolveDataFilePath() {
     $possibleDirs = [
-        __DIR__ . '/../ads_data',      // Folder terpisah di luar Git (sangat ideal untuk deployment subfolder di Hostinger)
+        __DIR__ . '/../ads_data',      // Folder terpisah 1 tingkat (misal: warehouse/ads_data)
+        __DIR__ . '/../../ads_data',    // Folder terpisah 2 tingkat (misal: public_html/ads_data)
         __DIR__ . '/../data_storage',  // Alternatif folder terpisah di luar Git
         __DIR__ . '/data_storage',     // Folder penyimpanan internal (di-ignore oleh Git)
         __DIR__                        // Fallback direktori lokal
