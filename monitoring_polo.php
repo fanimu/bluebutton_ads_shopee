@@ -795,11 +795,11 @@ function rCell($period_data, $css_class, $days_count = 1, $target_qty = 0, $targ
         $roas_highlight = 'roas-med';
     }
 
-    echo "<td class='{$css_class} text-center val-roas {$roas_highlight}' {$tooltip} data-val='{$roas}'>{$r_text}</td>";
-    echo "<td class='{$css_class} text-center' data-val='{$roas_sts['label']}'>{$roas_sts_html}</td>";
-    echo "<td class='{$css_class} text-end val-bgt' data-val='{$biaya_per_day}'><div>{$b_text}</div>" . ($tot_b_text ? "<div class='cell-sub'>{$tot_b_text}</div>" : "") . "</td>";
-    echo "<td class='{$css_class} text-center val-qty' data-val='{$qty_per_day}'><div>{$q_text}</div>" . ($tot_q_text ? "<div class='cell-sub'>{$tot_q_text}</div>" : "") . "</td>";
-    echo "<td class='{$css_class} text-center col-sep' data-val='{$qty_sts['label']}'>{$qty_sts_html}</td>";
+    echo "<td class='{$css_class} {$css_class}-detail col-period-detail text-center val-roas {$roas_highlight}' {$tooltip} data-val='{$roas}'>{$r_text}</td>";
+    echo "<td class='{$css_class} {$css_class}-summary col-period-summary text-center' data-val='{$roas_sts['label']}'>{$roas_sts_html}</td>";
+    echo "<td class='{$css_class} {$css_class}-detail col-period-detail text-end val-bgt' data-val='{$biaya_per_day}'><div>{$b_text}</div>" . ($tot_b_text ? "<div class='cell-sub'>{$tot_b_text}</div>" : "") . "</td>";
+    echo "<td class='{$css_class} {$css_class}-detail col-period-detail text-center val-qty' data-val='{$qty_per_day}'><div>{$q_text}</div>" . ($tot_q_text ? "<div class='cell-sub'>{$tot_q_text}</div>" : "") . "</td>";
+    echo "<td class='{$css_class} {$css_class}-detail col-period-detail text-center col-sep' data-val='{$qty_sts['label']}'>{$qty_sts_html}</td>";
 }
 
 $days_w1 = $days_meta['w1'] ?? 1;
@@ -1240,10 +1240,58 @@ $days_payday = $days_meta['payday'] ?? 1;
         table {
             border-collapse: separate;
             border-spacing: 0;
-            min-width: 2600px;
+            min-width: 1250px;
             width: 100%;
             background: #ffffff;
         }
+
+        /* === PERIOD EXPAND / COLLAPSE ACCORDION === */
+        .btn-toggle-period {
+            background: transparent;
+            border: none;
+            padding: 0 2px;
+            font-size: 0.78rem;
+            cursor: pointer;
+            line-height: 1;
+            display: inline-flex;
+            align-items: center;
+            vertical-align: middle;
+            pointer-events: none; /* Let parent th capture clicks cleanly */
+            transition: transform 0.15s ease;
+        }
+        .th-period-header {
+            cursor: pointer;
+            user-select: none;
+            transition: background 0.15s ease, filter 0.15s ease;
+        }
+        .th-period-header:hover {
+            filter: brightness(0.93);
+        }
+        .th-period-header:hover .btn-toggle-period {
+            transform: scale(1.25);
+        }
+        .th-period-header.is-collapsed .period-date-badge {
+            display: none !important;
+        }
+
+        /* Collapsed states: hide detail columns, keep summary (ROAS STS) visible */
+        .period-w1-collapsed .grp-w1-detail { display: none !important; }
+        .period-w1-collapsed .grp-w1-summary { border-right: 2px solid #cbd5e1 !important; }
+
+        .period-w2-collapsed .grp-w2-detail { display: none !important; }
+        .period-w2-collapsed .grp-w2-summary { border-right: 2px solid #cbd5e1 !important; }
+
+        .period-w3-collapsed .grp-w3-detail { display: none !important; }
+        .period-w3-collapsed .grp-w3-summary { border-right: 2px solid #cbd5e1 !important; }
+
+        .period-w4-collapsed .grp-w4-detail { display: none !important; }
+        .period-w4-collapsed .grp-w4-summary { border-right: 2px solid #cbd5e1 !important; }
+
+        .period-twin-collapsed .grp-twin-detail { display: none !important; }
+        .period-twin-collapsed .grp-twin-summary { border-right: 2px solid #cbd5e1 !important; }
+
+        .period-payday-collapsed .grp-payday-detail { display: none !important; }
+        .period-payday-collapsed .grp-payday-summary { border-right: 2px solid #cbd5e1 !important; }
 
         th, td {
             padding: 6px 9px;
@@ -1815,6 +1863,10 @@ $days_payday = $days_meta['payday'] ?? 1;
             <i class="bi bi-file-earmark-spreadsheet-fill text-success"></i> Ekspor CSV
         </button>
 
+        <button class="btn-modern btn-modern-outline" id="btnToggleAllPeriods" title="Buka / Tutup Semua Detail Periode">
+            <i class="bi bi-layout-three-columns text-primary"></i> <span id="lblToggleAll">Buka Semua Week</span>
+        </button>
+
         <button class="btn-modern btn-modern-outline" id="btnFullscreen" title="Perbesar Tampilan">
             <i class="bi bi-arrows-fullscreen"></i>
         </button>
@@ -1824,7 +1876,7 @@ $days_payday = $days_meta['payday'] ?? 1;
 <!-- 4. MASTER DATA TABLE -->
 <div class="main-content" id="mainContentArea">
     <div class="table-container">
-        <table id="dataTable">
+        <table id="dataTable" class="period-w1-collapsed period-w2-collapsed period-w3-collapsed period-w4-collapsed period-twin-collapsed period-payday-collapsed">
             <thead>
                 <!-- Level 1: Main Title -->
                 <tr>
@@ -1852,23 +1904,47 @@ $days_payday = $days_meta['payday'] ?? 1;
                     <th colspan="3" class="th-group-main th-grp-qty col-sep"><i class="bi bi-box-seam me-1"></i>METRIK QTY</th>
                     <th colspan="2" class="th-group-main th-grp-plan col-sep"><i class="bi bi-wallet2 me-1"></i>PLAN BUDGETING</th>
                     
-                    <th colspan="5" class="th-group-main th-grp-w1 col-sep">
-                        WEEK 1 <span class="date-badge badge-w1"><?= htmlspecialchars($lbl_w1) ?></span>
+                    <th colspan="1" class="th-group-main th-grp-w1 col-sep th-period-header is-collapsed" data-period="w1" title="Klik untuk buka detail Week 1">
+                        <div class="d-flex align-items-center justify-content-center gap-1">
+                            <span>WEEK 1</span>
+                            <button type="button" class="btn-toggle-period" tabindex="-1"><i class="bi bi-plus-circle text-primary"></i></button>
+                        </div>
+                        <span class="date-badge badge-w1 period-date-badge"><?= htmlspecialchars($lbl_w1) ?></span>
                     </th>
-                    <th colspan="5" class="th-group-main th-grp-w2 col-sep">
-                        WEEK 2 <span class="date-badge badge-w2"><?= htmlspecialchars($lbl_w2) ?></span>
+                    <th colspan="1" class="th-group-main th-grp-w2 col-sep th-period-header is-collapsed" data-period="w2" title="Klik untuk buka detail Week 2">
+                        <div class="d-flex align-items-center justify-content-center gap-1">
+                            <span>WEEK 2</span>
+                            <button type="button" class="btn-toggle-period" tabindex="-1"><i class="bi bi-plus-circle text-primary"></i></button>
+                        </div>
+                        <span class="date-badge badge-w2 period-date-badge"><?= htmlspecialchars($lbl_w2) ?></span>
                     </th>
-                    <th colspan="5" class="th-group-main th-grp-w3 col-sep">
-                        WEEK 3 <span class="date-badge badge-w3"><?= htmlspecialchars($lbl_w3) ?></span>
+                    <th colspan="1" class="th-group-main th-grp-w3 col-sep th-period-header is-collapsed" data-period="w3" title="Klik untuk buka detail Week 3">
+                        <div class="d-flex align-items-center justify-content-center gap-1">
+                            <span>WEEK 3</span>
+                            <button type="button" class="btn-toggle-period" tabindex="-1"><i class="bi bi-plus-circle text-primary"></i></button>
+                        </div>
+                        <span class="date-badge badge-w3 period-date-badge"><?= htmlspecialchars($lbl_w3) ?></span>
                     </th>
-                    <th colspan="5" class="th-group-main th-grp-w4 col-sep">
-                        WEEK 4 <span class="date-badge badge-w4"><?= htmlspecialchars($lbl_w4) ?></span>
+                    <th colspan="1" class="th-group-main th-grp-w4 col-sep th-period-header is-collapsed" data-period="w4" title="Klik untuk buka detail Week 4">
+                        <div class="d-flex align-items-center justify-content-center gap-1">
+                            <span>WEEK 4</span>
+                            <button type="button" class="btn-toggle-period" tabindex="-1"><i class="bi bi-plus-circle text-primary"></i></button>
+                        </div>
+                        <span class="date-badge badge-w4 period-date-badge"><?= htmlspecialchars($lbl_w4) ?></span>
                     </th>
-                    <th colspan="5" class="th-group-main th-grp-twin col-sep">
-                        <i class="bi bi-calendar2-heart-fill me-1"></i>TWIN DATE <span class="date-badge badge-twin"><?= htmlspecialchars($lbl_twin) ?></span>
+                    <th colspan="1" class="th-group-main th-grp-twin col-sep th-period-header is-collapsed" data-period="twin" title="Klik untuk buka detail Twin Date">
+                        <div class="d-flex align-items-center justify-content-center gap-1">
+                            <i class="bi bi-calendar2-heart-fill me-1"></i><span>TWIN</span>
+                            <button type="button" class="btn-toggle-period" tabindex="-1"><i class="bi bi-plus-circle text-primary"></i></button>
+                        </div>
+                        <span class="date-badge badge-twin period-date-badge"><?= htmlspecialchars($lbl_twin) ?></span>
                     </th>
-                    <th colspan="5" class="th-group-main th-grp-payday col-sep">
-                        <i class="bi bi-cash-coin me-1"></i>PAYDAY <span class="date-badge badge-payday"><?= htmlspecialchars($lbl_payday) ?></span>
+                    <th colspan="1" class="th-group-main th-grp-payday col-sep th-period-header is-collapsed" data-period="payday" title="Klik untuk buka detail Payday">
+                        <div class="d-flex align-items-center justify-content-center gap-1">
+                            <i class="bi bi-cash-coin me-1"></i><span>PAYDAY</span>
+                            <button type="button" class="btn-toggle-period" tabindex="-1"><i class="bi bi-plus-circle text-primary"></i></button>
+                        </div>
+                        <span class="date-badge badge-payday period-date-badge"><?= htmlspecialchars($lbl_payday) ?></span>
                     </th>
                 </tr>
 
@@ -1887,12 +1963,41 @@ $days_payday = $days_meta['payday'] ?? 1;
                     <th class="th-sub grp-plan sortable-th" data-col="8" title="Klik untuk mengurutkan Plan Budgeting %">PLAN % <i class="bi bi-arrow-down-up sort-icon"></i></th>
                     <th class="th-sub grp-plan col-sep sortable-th" data-col="9" title="Klik untuk mengurutkan Rata-rata Budget">RATA2 BGT <i class="bi bi-arrow-down-up sort-icon"></i></th>
                     
-                    <th class="th-sub grp-w1 sortable-th" data-col="10" title="Sort W1 ROAS">ROAS <i class="bi bi-arrow-down-up sort-icon"></i></th><th class="th-sub grp-w1 sortable-th" data-col="11" title="Sort Status ROAS Week 1">STS <i class="bi bi-arrow-down-up sort-icon"></i></th><th class="th-sub grp-w1 sortable-th" data-col="12" title="Sort W1 Budget/Hari">BGT/HR <i class="bi bi-arrow-down-up sort-icon"></i></th><th class="th-sub grp-w1 sortable-th" data-col="13" title="Sort W1 Qty/Hari">QTY/HR <i class="bi bi-arrow-down-up sort-icon"></i></th><th class="th-sub grp-w1 col-sep sortable-th" data-col="14" title="Sort Status QTY Week 1">STS <i class="bi bi-arrow-down-up sort-icon"></i></th>
-                    <th class="th-sub grp-w2 sortable-th" data-col="15" title="Sort W2 ROAS">ROAS <i class="bi bi-arrow-down-up sort-icon"></i></th><th class="th-sub grp-w2 sortable-th" data-col="16" title="Sort Status ROAS Week 2">STS <i class="bi bi-arrow-down-up sort-icon"></i></th><th class="th-sub grp-w2 sortable-th" data-col="17" title="Sort W2 Budget/Hari">BGT/HR <i class="bi bi-arrow-down-up sort-icon"></i></th><th class="th-sub grp-w2 sortable-th" data-col="18" title="Sort W2 Qty/Hari">QTY/HR <i class="bi bi-arrow-down-up sort-icon"></i></th><th class="th-sub grp-w2 col-sep sortable-th" data-col="19" title="Sort Status QTY Week 2">STS <i class="bi bi-arrow-down-up sort-icon"></i></th>
-                    <th class="th-sub grp-w3 sortable-th" data-col="20" title="Sort W3 ROAS">ROAS <i class="bi bi-arrow-down-up sort-icon"></i></th><th class="th-sub grp-w3 sortable-th" data-col="21" title="Sort Status ROAS Week 3">STS <i class="bi bi-arrow-down-up sort-icon"></i></th><th class="th-sub grp-w3 sortable-th" data-col="22" title="Sort W3 Budget/Hari">BGT/HR <i class="bi bi-arrow-down-up sort-icon"></i></th><th class="th-sub grp-w3 sortable-th" data-col="23" title="Sort W3 Qty/Hari">QTY/HR <i class="bi bi-arrow-down-up sort-icon"></i></th><th class="th-sub grp-w3 col-sep sortable-th" data-col="24" title="Sort Status QTY Week 3">STS <i class="bi bi-arrow-down-up sort-icon"></i></th>
-                    <th class="th-sub grp-w4 sortable-th" data-col="25" title="Sort W4 ROAS">ROAS <i class="bi bi-arrow-down-up sort-icon"></i></th><th class="th-sub grp-w4 sortable-th" data-col="26" title="Sort Status ROAS Week 4">STS <i class="bi bi-arrow-down-up sort-icon"></i></th><th class="th-sub grp-w4 sortable-th" data-col="27" title="Sort W4 Budget/Hari">BGT/HR <i class="bi bi-arrow-down-up sort-icon"></i></th><th class="th-sub grp-w4 sortable-th" data-col="28" title="Sort W4 Qty/Hari">QTY/HR <i class="bi bi-arrow-down-up sort-icon"></i></th><th class="th-sub grp-w4 col-sep sortable-th" data-col="29" title="Sort Status QTY Week 4">STS <i class="bi bi-arrow-down-up sort-icon"></i></th>
-                    <th class="th-sub grp-twin sortable-th" data-col="30" title="Sort Twin Date ROAS">ROAS <i class="bi bi-arrow-down-up sort-icon"></i></th><th class="th-sub grp-twin sortable-th" data-col="31" title="Sort Status ROAS Twin Date">STS <i class="bi bi-arrow-down-up sort-icon"></i></th><th class="th-sub grp-twin sortable-th" data-col="32" title="Sort Twin Date Budget/Hari">BGT/HR <i class="bi bi-arrow-down-up sort-icon"></i></th><th class="th-sub grp-twin sortable-th" data-col="33" title="Sort Twin Date Qty/Hari">QTY/HR <i class="bi bi-arrow-down-up sort-icon"></i></th><th class="th-sub grp-twin col-sep sortable-th" data-col="34" title="Sort Status QTY Twin Date">STS <i class="bi bi-arrow-down-up sort-icon"></i></th>
-                    <th class="th-sub grp-payday sortable-th" data-col="35" title="Sort Payday ROAS">ROAS <i class="bi bi-arrow-down-up sort-icon"></i></th><th class="th-sub grp-payday sortable-th" data-col="36" title="Sort Status ROAS Payday">STS <i class="bi bi-arrow-down-up sort-icon"></i></th><th class="th-sub grp-payday sortable-th" data-col="37" title="Sort Payday Budget/Hari">BGT/HR <i class="bi bi-arrow-down-up sort-icon"></i></th><th class="th-sub grp-payday sortable-th" data-col="38" title="Sort Payday Qty/Hari">QTY/HR <i class="bi bi-arrow-down-up sort-icon"></i></th><th class="th-sub grp-payday col-sep sortable-th" data-col="39" title="Sort Status QTY Payday">STS <i class="bi bi-arrow-down-up sort-icon"></i></th>
+                    <th class="th-sub grp-w1 grp-w1-detail col-period-detail sortable-th" data-col="10" title="Sort W1 ROAS">ROAS <i class="bi bi-arrow-down-up sort-icon"></i></th>
+                    <th class="th-sub grp-w1 grp-w1-summary col-period-summary sortable-th" data-col="11" title="Sort Status ROAS Week 1">STS <i class="bi bi-arrow-down-up sort-icon"></i></th>
+                    <th class="th-sub grp-w1 grp-w1-detail col-period-detail sortable-th" data-col="12" title="Sort W1 Budget/Hari">BGT/HR <i class="bi bi-arrow-down-up sort-icon"></i></th>
+                    <th class="th-sub grp-w1 grp-w1-detail col-period-detail sortable-th" data-col="13" title="Sort W1 Qty/Hari">QTY/HR <i class="bi bi-arrow-down-up sort-icon"></i></th>
+                    <th class="th-sub grp-w1 grp-w1-detail col-period-detail col-sep sortable-th" data-col="14" title="Sort Status QTY Week 1">STS <i class="bi bi-arrow-down-up sort-icon"></i></th>
+
+                    <th class="th-sub grp-w2 grp-w2-detail col-period-detail sortable-th" data-col="15" title="Sort W2 ROAS">ROAS <i class="bi bi-arrow-down-up sort-icon"></i></th>
+                    <th class="th-sub grp-w2 grp-w2-summary col-period-summary sortable-th" data-col="16" title="Sort Status ROAS Week 2">STS <i class="bi bi-arrow-down-up sort-icon"></i></th>
+                    <th class="th-sub grp-w2 grp-w2-detail col-period-detail sortable-th" data-col="17" title="Sort W2 Budget/Hari">BGT/HR <i class="bi bi-arrow-down-up sort-icon"></i></th>
+                    <th class="th-sub grp-w2 grp-w2-detail col-period-detail sortable-th" data-col="18" title="Sort W2 Qty/Hari">QTY/HR <i class="bi bi-arrow-down-up sort-icon"></i></th>
+                    <th class="th-sub grp-w2 grp-w2-detail col-period-detail col-sep sortable-th" data-col="19" title="Sort Status QTY Week 2">STS <i class="bi bi-arrow-down-up sort-icon"></i></th>
+
+                    <th class="th-sub grp-w3 grp-w3-detail col-period-detail sortable-th" data-col="20" title="Sort W3 ROAS">ROAS <i class="bi bi-arrow-down-up sort-icon"></i></th>
+                    <th class="th-sub grp-w3 grp-w3-summary col-period-summary sortable-th" data-col="21" title="Sort Status ROAS Week 3">STS <i class="bi bi-arrow-down-up sort-icon"></i></th>
+                    <th class="th-sub grp-w3 grp-w3-detail col-period-detail sortable-th" data-col="22" title="Sort W3 Budget/Hari">BGT/HR <i class="bi bi-arrow-down-up sort-icon"></i></th>
+                    <th class="th-sub grp-w3 grp-w3-detail col-period-detail sortable-th" data-col="23" title="Sort W3 Qty/Hari">QTY/HR <i class="bi bi-arrow-down-up sort-icon"></i></th>
+                    <th class="th-sub grp-w3 grp-w3-detail col-period-detail col-sep sortable-th" data-col="24" title="Sort Status QTY Week 3">STS <i class="bi bi-arrow-down-up sort-icon"></i></th>
+
+                    <th class="th-sub grp-w4 grp-w4-detail col-period-detail sortable-th" data-col="25" title="Sort W4 ROAS">ROAS <i class="bi bi-arrow-down-up sort-icon"></i></th>
+                    <th class="th-sub grp-w4 grp-w4-summary col-period-summary sortable-th" data-col="26" title="Sort Status ROAS Week 4">STS <i class="bi bi-arrow-down-up sort-icon"></i></th>
+                    <th class="th-sub grp-w4 grp-w4-detail col-period-detail sortable-th" data-col="27" title="Sort W4 Budget/Hari">BGT/HR <i class="bi bi-arrow-down-up sort-icon"></i></th>
+                    <th class="th-sub grp-w4 grp-w4-detail col-period-detail sortable-th" data-col="28" title="Sort W4 Qty/Hari">QTY/HR <i class="bi bi-arrow-down-up sort-icon"></i></th>
+                    <th class="th-sub grp-w4 grp-w4-detail col-period-detail col-sep sortable-th" data-col="29" title="Sort Status QTY Week 4">STS <i class="bi bi-arrow-down-up sort-icon"></i></th>
+
+                    <th class="th-sub grp-twin grp-twin-detail col-period-detail sortable-th" data-col="30" title="Sort Twin Date ROAS">ROAS <i class="bi bi-arrow-down-up sort-icon"></i></th>
+                    <th class="th-sub grp-twin grp-twin-summary col-period-summary sortable-th" data-col="31" title="Sort Status ROAS Twin Date">STS <i class="bi bi-arrow-down-up sort-icon"></i></th>
+                    <th class="th-sub grp-twin grp-twin-detail col-period-detail sortable-th" data-col="32" title="Sort Twin Date Budget/Hari">BGT/HR <i class="bi bi-arrow-down-up sort-icon"></i></th>
+                    <th class="th-sub grp-twin grp-twin-detail col-period-detail sortable-th" data-col="33" title="Sort Twin Date Qty/Hari">QTY/HR <i class="bi bi-arrow-down-up sort-icon"></i></th>
+                    <th class="th-sub grp-twin grp-twin-detail col-period-detail col-sep sortable-th" data-col="34" title="Sort Status QTY Twin Date">STS <i class="bi bi-arrow-down-up sort-icon"></i></th>
+
+                    <th class="th-sub grp-payday grp-payday-detail col-period-detail sortable-th" data-col="35" title="Sort Payday ROAS">ROAS <i class="bi bi-arrow-down-up sort-icon"></i></th>
+                    <th class="th-sub grp-payday grp-payday-summary col-period-summary sortable-th" data-col="36" title="Sort Status ROAS Payday">STS <i class="bi bi-arrow-down-up sort-icon"></i></th>
+                    <th class="th-sub grp-payday grp-payday-detail col-period-detail sortable-th" data-col="37" title="Sort Payday Budget/Hari">BGT/HR <i class="bi bi-arrow-down-up sort-icon"></i></th>
+                    <th class="th-sub grp-payday grp-payday-detail col-period-detail sortable-th" data-col="38" title="Sort Payday Qty/Hari">QTY/HR <i class="bi bi-arrow-down-up sort-icon"></i></th>
+                    <th class="th-sub grp-payday grp-payday-detail col-period-detail col-sep sortable-th" data-col="39" title="Sort Status QTY Payday">STS <i class="bi bi-arrow-down-up sort-icon"></i></th>
                 </tr>
             </thead>
             <tbody id="tableBody">
@@ -2342,6 +2447,55 @@ $(document).ready(function() {
         $(this).addClass('active');
         currentStatusFilter = $(this).data('filter');
         applyTableFilters();
+    });
+
+    // === 2.1 PERIOD ACCORDION (EXPAND / COLLAPSE) ===
+    const allPeriods = ['w1', 'w2', 'w3', 'w4', 'twin', 'payday'];
+
+    function togglePeriod(period, forceState = null) {
+        let table = $('#dataTable');
+        let th = $(`.th-period-header[data-period="${period}"]`);
+        let collapsedClass = `period-${period}-collapsed`;
+        let isCurrentlyCollapsed = table.hasClass(collapsedClass);
+        
+        let shouldCollapse = (forceState !== null) ? forceState : !isCurrentlyCollapsed;
+        
+        if (shouldCollapse) {
+            table.addClass(collapsedClass);
+            th.addClass('is-collapsed').attr('colspan', '1');
+            th.find('.btn-toggle-period i').removeClass('bi-dash-circle text-danger').addClass('bi-plus-circle text-primary');
+            th.attr('title', `Klik untuk buka detail ${period.toUpperCase()}`);
+        } else {
+            table.removeClass(collapsedClass);
+            th.removeClass('is-collapsed').attr('colspan', '5');
+            th.find('.btn-toggle-period i').removeClass('bi-plus-circle text-primary').addClass('bi-dash-circle text-danger');
+            th.attr('title', `Klik untuk tutup detail ${period.toUpperCase()}`);
+        }
+        updateToggleAllButtonState();
+    }
+
+    function updateToggleAllButtonState() {
+        let anyCollapsed = allPeriods.some(p => $('#dataTable').hasClass(`period-${p}-collapsed`));
+        if (anyCollapsed) {
+            $('#btnToggleAllPeriods').html('<i class="bi bi-layout-three-columns text-primary"></i> <span id="lblToggleAll">Buka Semua Week</span>');
+        } else {
+            $('#btnToggleAllPeriods').html('<i class="bi bi-layout-sidebar-inset text-danger"></i> <span id="lblToggleAll">Tutup Semua Week</span>');
+        }
+    }
+
+    $(document).on('click', '.th-period-header', function(e) {
+        let period = $(this).data('period');
+        if (period) {
+            togglePeriod(period);
+        }
+    });
+
+    $('#btnToggleAllPeriods').on('click', function() {
+        let anyCollapsed = allPeriods.some(p => $('#dataTable').hasClass(`period-${p}-collapsed`));
+        let targetCollapseState = !anyCollapsed;
+        allPeriods.forEach(p => {
+            togglePeriod(p, targetCollapseState);
+        });
     });
 
     // 2. FULLSCREEN TOGGLE
