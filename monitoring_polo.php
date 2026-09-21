@@ -1,8 +1,71 @@
 <?php
-$dataFile = 'data_polo.json';
+// ==========================================
+// SAFE DATA STORAGE & PERSISTENCE
+// ==========================================
+function resolveDataFilePath() {
+    $possibleDirs = [
+        __DIR__ . '/../ads_data',      // Folder terpisah di luar Git (sangat ideal untuk deployment subfolder di Hostinger)
+        __DIR__ . '/../data_storage',  // Alternatif folder terpisah di luar Git
+        __DIR__ . '/data_storage',     // Folder penyimpanan internal (di-ignore oleh Git)
+        __DIR__                        // Fallback direktori lokal
+    ];
+
+    foreach ($possibleDirs as $dir) {
+        if (file_exists($dir . '/data_polo.json')) {
+            return rtrim($dir, '/\\') . '/data_polo.json';
+        }
+    }
+
+    // Jika belum ada file sebelumnya, prioritaskan folder aman
+    if (@is_dir(__DIR__ . '/../ads_data') || @mkdir(__DIR__ . '/../ads_data', 0755, true)) {
+        return __DIR__ . '/../ads_data/data_polo.json';
+    } elseif (@is_dir(__DIR__ . '/data_storage') || @mkdir(__DIR__ . '/data_storage', 0755, true)) {
+        return __DIR__ . '/data_storage/data_polo.json';
+    }
+    return __DIR__ . '/data_polo.json';
+}
+
+function saveDataWithBackup($filePath, $data) {
+    $dir = dirname($filePath);
+    $backupDir = $dir . '/backups';
+    if (!is_dir($backupDir)) {
+        @mkdir($backupDir, 0755, true);
+    }
+
+    // Buat backup harian & backup terakhir jika file saat ini ada isinya
+    if (file_exists($filePath) && filesize($filePath) > 0) {
+        $dailyBackup = $backupDir . '/data_polo_backup_' . date('Ymd') . '.json';
+        if (!file_exists($dailyBackup)) {
+            @copy($filePath, $dailyBackup);
+        }
+        @copy($filePath, $backupDir . '/data_polo_latest_backup.json');
+
+        // Rotasi backup (simpan maksimal 7 backup harian terakhir)
+        $backups = glob($backupDir . '/data_polo_backup_*.json');
+        if ($backups && count($backups) > 7) {
+            sort($backups);
+            $toDelete = array_slice($backups, 0, count($backups) - 7);
+            foreach ($toDelete as $oldFile) {
+                @unlink($oldFile);
+            }
+        }
+    }
+
+    // Simpan data secara atomic (tulis ke temp lalu rename) agar tidak korup
+    $tempFile = $filePath . '.tmp.' . uniqid();
+    $encoded = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+    if (@file_put_contents($tempFile, $encoded) !== false) {
+        if (@rename($tempFile, $filePath)) {
+            return true;
+        }
+    }
+    return @file_put_contents($filePath, $encoded) !== false;
+}
+
+$dataFile = resolveDataFilePath();
 
 if (!file_exists($dataFile)) {
-    file_put_contents($dataFile, json_encode(['products' => [], 'meta_period_dates' => [], 'meta_period_days' => []]));
+    saveDataWithBackup($dataFile, ['products' => [], 'meta_period_dates' => [], 'meta_period_days' => []]);
 }
 $data = json_decode(file_get_contents($dataFile), true);
 
@@ -29,7 +92,7 @@ foreach ($data['products'] as $kode => &$p) {
 }
 unset($p);
 if ($is_migrated) {
-    file_put_contents($dataFile, json_encode($data, JSON_PRETTY_PRINT));
+    saveDataWithBackup($dataFile, $data);
 }
 
 // ==========================================
@@ -169,7 +232,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
 
         if (isset($data['products'][$kode])) {
             $data['products'][$kode][$field] = $value;
-            file_put_contents($dataFile, json_encode($data, JSON_PRETTY_PRINT));
+            saveDataWithBackup($dataFile, $data);
 
             // Sinkronisasi ke database MySQL shopee_ads_targets
             if ($db_conn && ($field === 'target_roas' || $field === 'target_qty')) {
@@ -227,7 +290,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         }
         unset($p);
         
-        file_put_contents($dataFile, json_encode($data, JSON_PRETTY_PRINT));
+        saveDataWithBackup($dataFile, $data);
 
         // Sinkronisasi ke MySQL shopee_ads_targets dan shopee_ads_category_targets
         if ($db_conn && ($field === 'target_roas' || $field === 'target_qty')) {
@@ -386,7 +449,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                 if (!isset($data['meta_period_days'][$up_year][$up_month])) $data['meta_period_days'][$up_year][$up_month] = [];
                 $data['meta_period_days'][$up_year][$up_month][$period] = $days_count > 0 ? $days_count : 1;
                 
-                file_put_contents($dataFile, json_encode($data, JSON_PRETTY_PRINT));
+                saveDataWithBackup($dataFile, $data);
                 
                 $_GET['year'] = $up_year;
                 $_GET['month'] = $up_month;
@@ -410,7 +473,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         if (isset($data['meta_period_dates'][$clr_year][$clr_month][$period])) unset($data['meta_period_dates'][$clr_year][$clr_month][$period]);
         if (isset($data['meta_period_days'][$clr_year][$clr_month][$period])) unset($data['meta_period_days'][$clr_year][$clr_month][$period]);
         
-        file_put_contents($dataFile, json_encode($data, JSON_PRETTY_PRINT));
+        saveDataWithBackup($dataFile, $data);
         
         $_GET['year'] = $clr_year;
         $_GET['month'] = $clr_month;

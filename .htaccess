@@ -1,7 +1,13 @@
 # Default landing page when accessed with trailing slash
 DirectoryIndex monitoring_polo.php index.php
 
-# Block direct HTTP access to JSON files and Git files
-<FilesMatch "\.(json|git|gitignore)$">
+# Block direct HTTP access to JSON files, Git files, and temporary files
+<FilesMatch "\.(json|git|gitignore|tmp.*)$">
     Require all denied
 </FilesMatch>
+
+# Block access to data and backup directories
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^(data_storage|ads_data|backups)/ - [F,L]
+</IfModule>

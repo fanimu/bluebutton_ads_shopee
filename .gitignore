@@ -12,5 +12,10 @@ Desktop.ini
 # Log files
 *.log
 
-# Uncomment below if you do not want to track real data in git
-# data_polo.json
+# Secure Storage & Runtime Data (DO NOT TRACK IN GIT)
+data_polo.json
+*.tmp*
+data_storage/
+ads_data/
+backups/
+*.backup.json
