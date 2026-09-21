@@ -720,11 +720,11 @@ function rCell($period_data, $css_class, $days_count = 1, $target_qty = 0, $targ
         $roas_highlight = 'roas-med';
     }
 
-    echo "<td class='{$css_class} text-center val-roas {$roas_highlight}' {$tooltip}>{$r_text}</td>";
-    echo "<td class='{$css_class} text-center'>{$roas_sts_html}</td>";
-    echo "<td class='{$css_class} text-end val-bgt'><div>{$b_text}</div>" . ($tot_b_text ? "<div class='cell-sub'>{$tot_b_text}</div>" : "") . "</td>";
-    echo "<td class='{$css_class} text-center val-qty'><div>{$q_text}</div>" . ($tot_q_text ? "<div class='cell-sub'>{$tot_q_text}</div>" : "") . "</td>";
-    echo "<td class='{$css_class} text-center col-sep'>{$qty_sts_html}</td>";
+    echo "<td class='{$css_class} text-center val-roas {$roas_highlight}' {$tooltip} data-val='{$roas}'>{$r_text}</td>";
+    echo "<td class='{$css_class} text-center' data-val='{$roas_sts['label']}'>{$roas_sts_html}</td>";
+    echo "<td class='{$css_class} text-end val-bgt' data-val='{$biaya_per_day}'><div>{$b_text}</div>" . ($tot_b_text ? "<div class='cell-sub'>{$tot_b_text}</div>" : "") . "</td>";
+    echo "<td class='{$css_class} text-center val-qty' data-val='{$qty_per_day}'><div>{$q_text}</div>" . ($tot_q_text ? "<div class='cell-sub'>{$tot_q_text}</div>" : "") . "</td>";
+    echo "<td class='{$css_class} text-center col-sep' data-val='{$qty_sts['label']}'>{$qty_sts_html}</td>";
 }
 
 $days_w1 = $days_meta['w1'] ?? 1;
@@ -1337,6 +1337,34 @@ $days_payday = $days_meta['payday'] ?? 1;
             color: #047857 !important;
         }
 
+        /* === SORTABLE TABLE HEADERS === */
+        th.sortable-th {
+            cursor: pointer !important;
+            user-select: none !important;
+            transition: background 0.15s ease, filter 0.15s ease;
+            white-space: nowrap;
+        }
+        th.sortable-th:hover {
+            filter: brightness(0.92);
+        }
+        th.sortable-th .sort-icon {
+            display: inline-block;
+            margin-left: 3px;
+            font-size: 0.65rem;
+            opacity: 0.45;
+            vertical-align: middle;
+            transition: transform 0.15s ease, opacity 0.15s ease, color 0.15s ease;
+        }
+        th.sortable-th:hover .sort-icon {
+            opacity: 0.9;
+        }
+        th.sortable-th.sorted-asc .sort-icon,
+        th.sortable-th.sorted-desc .sort-icon {
+            opacity: 1 !important;
+            color: #0284c7 !important;
+            font-weight: 700;
+        }
+
         /* === STICKY COLUMNS === */
         .sticky-col-1 {
             position: sticky;
@@ -1742,8 +1770,8 @@ $days_payday = $days_meta['payday'] ?? 1;
 
                 <!-- Level 2: Group Headers -->
                 <tr>
-                    <th rowspan="2" class="sticky-col-1 th-group-main">NO</th>
-                    <th rowspan="2" class="sticky-col-2 th-group-main text-start ps-3">NAMA IKLAN</th>
+                    <th rowspan="2" class="sticky-col-1 th-group-main sortable-th" data-col="0" title="Klik untuk mengurutkan No">NO <i class="bi bi-arrow-down-up sort-icon"></i></th>
+                    <th rowspan="2" class="sticky-col-2 th-group-main text-start ps-3 sortable-th" data-col="1" title="Klik untuk mengurutkan Nama Iklan">NAMA IKLAN <i class="bi bi-arrow-down-up sort-icon"></i></th>
                     
                     <th colspan="3" class="th-group-main th-grp-roas col-sep"><i class="bi bi-graph-up me-1"></i>METRIK ROAS</th>
                     <th colspan="3" class="th-group-main th-grp-qty col-sep"><i class="bi bi-box-seam me-1"></i>METRIK QTY</th>
@@ -1771,25 +1799,25 @@ $days_payday = $days_meta['payday'] ?? 1;
 
                 <!-- Level 3: Sub Headers -->
                 <tr>
-                    <th class="th-sub grp-metrik-roas">
-                        TARGET <i class="bi bi-pencil-square ms-1 bulk-edit" data-field="target_roas" title="Edit Massal Target ROAS" style="color: #0369a1;"></i>
+                    <th class="th-sub grp-metrik-roas sortable-th" data-col="2" title="Klik untuk mengurutkan Target ROAS">
+                        TARGET <i class="bi bi-pencil-square ms-1 bulk-edit" data-field="target_roas" title="Edit Massal Target ROAS" style="color: #0369a1;"></i> <i class="bi bi-arrow-down-up sort-icon"></i>
                     </th>
-                    <th class="th-sub grp-metrik-roas">RATA2</th>
-                    <th class="th-sub grp-metrik-roas col-sep">STS</th>
-                    <th class="th-sub grp-metrik-qty">
-                        TARGET <i class="bi bi-pencil-square ms-1 bulk-edit" data-field="target_qty" title="Edit Massal Target QTY" style="color: #15803d;"></i>
+                    <th class="th-sub grp-metrik-roas sortable-th" data-col="3" title="Klik untuk mengurutkan Rata-rata ROAS">RATA2 <i class="bi bi-arrow-down-up sort-icon"></i></th>
+                    <th class="th-sub grp-metrik-roas col-sep sortable-th" data-col="4" title="Klik untuk mengurutkan Status ROAS">STS <i class="bi bi-arrow-down-up sort-icon"></i></th>
+                    <th class="th-sub grp-metrik-qty sortable-th" data-col="5" title="Klik untuk mengurutkan Target QTY">
+                        TARGET <i class="bi bi-pencil-square ms-1 bulk-edit" data-field="target_qty" title="Edit Massal Target QTY" style="color: #15803d;"></i> <i class="bi bi-arrow-down-up sort-icon"></i>
                     </th>
-                    <th class="th-sub grp-metrik-qty">RATA2 ACT</th>
-                    <th class="th-sub grp-metrik-qty col-sep">STS</th>
-                    <th class="th-sub grp-plan">PLAN %</th>
-                    <th class="th-sub grp-plan col-sep">RATA2 BGT</th>
+                    <th class="th-sub grp-metrik-qty sortable-th" data-col="6" title="Klik untuk mengurutkan Rata-rata Actual QTY">RATA2 ACT <i class="bi bi-arrow-down-up sort-icon"></i></th>
+                    <th class="th-sub grp-metrik-qty col-sep sortable-th" data-col="7" title="Klik untuk mengurutkan Status QTY">STS <i class="bi bi-arrow-down-up sort-icon"></i></th>
+                    <th class="th-sub grp-plan sortable-th" data-col="8" title="Klik untuk mengurutkan Plan Budgeting %">PLAN % <i class="bi bi-arrow-down-up sort-icon"></i></th>
+                    <th class="th-sub grp-plan col-sep sortable-th" data-col="9" title="Klik untuk mengurutkan Rata-rata Budget">RATA2 BGT <i class="bi bi-arrow-down-up sort-icon"></i></th>
                     
-                    <th class="th-sub grp-w1">ROAS</th><th class="th-sub grp-w1" title="Status ROAS Week 1">STS</th><th class="th-sub grp-w1">BGT/HR</th><th class="th-sub grp-w1">QTY/HR</th><th class="th-sub grp-w1 col-sep" title="Status QTY Week 1">STS</th>
-                    <th class="th-sub grp-w2">ROAS</th><th class="th-sub grp-w2" title="Status ROAS Week 2">STS</th><th class="th-sub grp-w2">BGT/HR</th><th class="th-sub grp-w2">QTY/HR</th><th class="th-sub grp-w2 col-sep" title="Status QTY Week 2">STS</th>
-                    <th class="th-sub grp-w3">ROAS</th><th class="th-sub grp-w3" title="Status ROAS Week 3">STS</th><th class="th-sub grp-w3">BGT/HR</th><th class="th-sub grp-w3">QTY/HR</th><th class="th-sub grp-w3 col-sep" title="Status QTY Week 3">STS</th>
-                    <th class="th-sub grp-w4">ROAS</th><th class="th-sub grp-w4" title="Status ROAS Week 4">STS</th><th class="th-sub grp-w4">BGT/HR</th><th class="th-sub grp-w4">QTY/HR</th><th class="th-sub grp-w4 col-sep" title="Status QTY Week 4">STS</th>
-                    <th class="th-sub grp-twin">ROAS</th><th class="th-sub grp-twin" title="Status ROAS Twin Date">STS</th><th class="th-sub grp-twin">BGT/HR</th><th class="th-sub grp-twin">QTY/HR</th><th class="th-sub grp-twin col-sep" title="Status QTY Twin Date">STS</th>
-                    <th class="th-sub grp-payday">ROAS</th><th class="th-sub grp-payday" title="Status ROAS Payday">STS</th><th class="th-sub grp-payday">BGT/HR</th><th class="th-sub grp-payday">QTY/HR</th><th class="th-sub grp-payday col-sep" title="Status QTY Payday">STS</th>
+                    <th class="th-sub grp-w1 sortable-th" data-col="10" title="Sort W1 ROAS">ROAS <i class="bi bi-arrow-down-up sort-icon"></i></th><th class="th-sub grp-w1 sortable-th" data-col="11" title="Sort Status ROAS Week 1">STS <i class="bi bi-arrow-down-up sort-icon"></i></th><th class="th-sub grp-w1 sortable-th" data-col="12" title="Sort W1 Budget/Hari">BGT/HR <i class="bi bi-arrow-down-up sort-icon"></i></th><th class="th-sub grp-w1 sortable-th" data-col="13" title="Sort W1 Qty/Hari">QTY/HR <i class="bi bi-arrow-down-up sort-icon"></i></th><th class="th-sub grp-w1 col-sep sortable-th" data-col="14" title="Sort Status QTY Week 1">STS <i class="bi bi-arrow-down-up sort-icon"></i></th>
+                    <th class="th-sub grp-w2 sortable-th" data-col="15" title="Sort W2 ROAS">ROAS <i class="bi bi-arrow-down-up sort-icon"></i></th><th class="th-sub grp-w2 sortable-th" data-col="16" title="Sort Status ROAS Week 2">STS <i class="bi bi-arrow-down-up sort-icon"></i></th><th class="th-sub grp-w2 sortable-th" data-col="17" title="Sort W2 Budget/Hari">BGT/HR <i class="bi bi-arrow-down-up sort-icon"></i></th><th class="th-sub grp-w2 sortable-th" data-col="18" title="Sort W2 Qty/Hari">QTY/HR <i class="bi bi-arrow-down-up sort-icon"></i></th><th class="th-sub grp-w2 col-sep sortable-th" data-col="19" title="Sort Status QTY Week 2">STS <i class="bi bi-arrow-down-up sort-icon"></i></th>
+                    <th class="th-sub grp-w3 sortable-th" data-col="20" title="Sort W3 ROAS">ROAS <i class="bi bi-arrow-down-up sort-icon"></i></th><th class="th-sub grp-w3 sortable-th" data-col="21" title="Sort Status ROAS Week 3">STS <i class="bi bi-arrow-down-up sort-icon"></i></th><th class="th-sub grp-w3 sortable-th" data-col="22" title="Sort W3 Budget/Hari">BGT/HR <i class="bi bi-arrow-down-up sort-icon"></i></th><th class="th-sub grp-w3 sortable-th" data-col="23" title="Sort W3 Qty/Hari">QTY/HR <i class="bi bi-arrow-down-up sort-icon"></i></th><th class="th-sub grp-w3 col-sep sortable-th" data-col="24" title="Sort Status QTY Week 3">STS <i class="bi bi-arrow-down-up sort-icon"></i></th>
+                    <th class="th-sub grp-w4 sortable-th" data-col="25" title="Sort W4 ROAS">ROAS <i class="bi bi-arrow-down-up sort-icon"></i></th><th class="th-sub grp-w4 sortable-th" data-col="26" title="Sort Status ROAS Week 4">STS <i class="bi bi-arrow-down-up sort-icon"></i></th><th class="th-sub grp-w4 sortable-th" data-col="27" title="Sort W4 Budget/Hari">BGT/HR <i class="bi bi-arrow-down-up sort-icon"></i></th><th class="th-sub grp-w4 sortable-th" data-col="28" title="Sort W4 Qty/Hari">QTY/HR <i class="bi bi-arrow-down-up sort-icon"></i></th><th class="th-sub grp-w4 col-sep sortable-th" data-col="29" title="Sort Status QTY Week 4">STS <i class="bi bi-arrow-down-up sort-icon"></i></th>
+                    <th class="th-sub grp-twin sortable-th" data-col="30" title="Sort Twin Date ROAS">ROAS <i class="bi bi-arrow-down-up sort-icon"></i></th><th class="th-sub grp-twin sortable-th" data-col="31" title="Sort Status ROAS Twin Date">STS <i class="bi bi-arrow-down-up sort-icon"></i></th><th class="th-sub grp-twin sortable-th" data-col="32" title="Sort Twin Date Budget/Hari">BGT/HR <i class="bi bi-arrow-down-up sort-icon"></i></th><th class="th-sub grp-twin sortable-th" data-col="33" title="Sort Twin Date Qty/Hari">QTY/HR <i class="bi bi-arrow-down-up sort-icon"></i></th><th class="th-sub grp-twin col-sep sortable-th" data-col="34" title="Sort Status QTY Twin Date">STS <i class="bi bi-arrow-down-up sort-icon"></i></th>
+                    <th class="th-sub grp-payday sortable-th" data-col="35" title="Sort Payday ROAS">ROAS <i class="bi bi-arrow-down-up sort-icon"></i></th><th class="th-sub grp-payday sortable-th" data-col="36" title="Sort Status ROAS Payday">STS <i class="bi bi-arrow-down-up sort-icon"></i></th><th class="th-sub grp-payday sortable-th" data-col="37" title="Sort Payday Budget/Hari">BGT/HR <i class="bi bi-arrow-down-up sort-icon"></i></th><th class="th-sub grp-payday sortable-th" data-col="38" title="Sort Payday Qty/Hari">QTY/HR <i class="bi bi-arrow-down-up sort-icon"></i></th><th class="th-sub grp-payday col-sep sortable-th" data-col="39" title="Sort Status QTY Payday">STS <i class="bi bi-arrow-down-up sort-icon"></i></th>
                 </tr>
             </thead>
             <tbody id="tableBody">
@@ -1804,10 +1832,10 @@ $days_payday = $days_meta['payday'] ?? 1;
                 ?>
                 <tr data-status="<?= htmlspecialchars($avg_sts['label']) ?>" data-roas-status="<?= htmlspecialchars($roas_sts['label']) ?>" data-active="<?= $has_spend ? '1' : '0' ?>">
                     <!-- Col 1: Index -->
-                    <td class="sticky-col-1 text-center fw-bold" style="color: #94a3b8; font-size: 0.72rem;"><?= $no++ ?></td>
+                    <td class="sticky-col-1 text-center fw-bold" style="color: #94a3b8; font-size: 0.72rem;" data-val="<?= $no ?>"><?= $no++ ?></td>
                     
                     <!-- Col 2: Product Name -->
-                    <td class="sticky-col-2">
+                    <td class="sticky-col-2" data-val="<?= htmlspecialchars($p['nama']) ?>">
                         <a href="#" class="history-link" data-kode="<?= $kode ?>" title="Klik untuk lihat analisa perbandingan antar-bulan">
                             <div class="product-name">
                                 <?= htmlspecialchars($p['nama']) ?>
@@ -1816,25 +1844,25 @@ $days_payday = $days_meta['payday'] ?? 1;
                     </td>
                     
                     <!-- Col 3: Target ROAS (Editable) -->
-                    <td class="grp-metrik-roas text-center editable" data-kode="<?= $kode ?>" data-field="target_roas" title="Klik untuk mengedit Target ROAS (angka bulat)">
+                    <td class="grp-metrik-roas text-center editable" data-kode="<?= $kode ?>" data-field="target_roas" data-val="<?= (float)$p['target_roas'] ?>" title="Klik untuk mengedit Target ROAS (angka bulat)">
                         <?= (int)round((float)$p['target_roas']) ?>
                     </td>
                     
                     <!-- Col 4: Rata-rata ROAS -->
-                    <td class="grp-metrik-roas text-center val-roas fs-6" <?= (!empty($p['_total_month_exp']) && !empty($p['_total_month_gmv'])) ? 'title="Total Biaya: Rp ' . number_format($p['_total_month_exp'], 0, ',', '.') . ' | Total GMV: Rp ' . number_format($p['_total_month_gmv'], 0, ',', '.') . '"' : '' ?>>
+                    <td class="grp-metrik-roas text-center val-roas fs-6" data-val="<?= (float)$p['_calc_rata2_roas'] ?>" <?= (!empty($p['_total_month_exp']) && !empty($p['_total_month_gmv'])) ? 'title="Total Biaya: Rp ' . number_format($p['_total_month_exp'], 0, ',', '.') . ' | Total GMV: Rp ' . number_format($p['_total_month_gmv'], 0, ',', '.') . '"' : '' ?>>
                         <?= number_format($p['_calc_rata2_roas'], 0) ?>
                     </td>
                     
                     <!-- Col 5: Status ROAS -->
-                    <td class="grp-metrik-roas text-center col-sep" data-roas-status="<?= htmlspecialchars($roas_sts['label']) ?>"><?= $roas_sts_html ?></td>
+                    <td class="grp-metrik-roas text-center col-sep" data-val="<?= htmlspecialchars($roas_sts['label']) ?>" data-roas-status="<?= htmlspecialchars($roas_sts['label']) ?>"><?= $roas_sts_html ?></td>
                     
                     <!-- Col 6: Target Qty (Editable) -->
-                    <td class="grp-metrik-qty text-center editable" data-kode="<?= $kode ?>" data-field="target_qty" title="Klik untuk mengedit Target QTY (angka bulat)">
+                    <td class="grp-metrik-qty text-center editable" data-kode="<?= $kode ?>" data-field="target_qty" data-val="<?= (float)$p['target_qty'] ?>" title="Klik untuk mengedit Target QTY (angka bulat)">
                         <?= (int)round((float)$p['target_qty']) ?>
                     </td>
                     
                     <!-- Col 7: Rata-rata Actual Qty -->
-                    <td class="grp-metrik-qty text-center val-qty">
+                    <td class="grp-metrik-qty text-center val-qty" data-val="<?= (float)$p['_calc_rata2_qty'] ?>">
                         <div><?= number_format($p['_calc_rata2_qty'], 1) ?></div>
                         <?php if (!empty($p['_total_month_qty'])): ?>
                             <div class="cell-sub" title="Total Penjualan Sebulan">Tot: <?= number_format($p['_total_month_qty'], 0, ',', '.') ?> pcs</div>
@@ -1842,16 +1870,16 @@ $days_payday = $days_meta['payday'] ?? 1;
                     </td>
                     
                     <!-- Col 8: Status Qty -->
-                    <td class="grp-metrik-qty text-center col-sep"><?= $avg_sts_html ?></td>
+                    <td class="grp-metrik-qty text-center col-sep" data-val="<?= htmlspecialchars($avg_sts['label']) ?>"><?= $avg_sts_html ?></td>
                     
                     <!-- Col 9: Budget Plan % (Editable) -->
-                    <td class="grp-plan text-end editable" data-kode="<?= $kode ?>" data-field="budget_plan_pct" style="color: #7e22ce;" title="Klik untuk mengedit persentase Plan Budgeting">
+                    <td class="grp-plan text-end editable" data-kode="<?= $kode ?>" data-field="budget_plan_pct" data-val="<?= (float)$p['_calc_budget_plan'] ?>" style="color: #7e22ce;" title="Klik untuk mengedit persentase Plan Budgeting">
                         <span class="text-muted fw-semibold" style="font-size: 0.62rem;">(+<?= $p['budget_plan_pct'] ?>%)</span><br>
                         <?= number_format($p['_calc_budget_plan'], 0, ',', '.') ?>
                     </td>
                     
                     <!-- Col 10: Rata-rata Budget Harian -->
-                    <td class="grp-plan text-end col-sep" style="color: #7e22ce; font-weight: 600;">
+                    <td class="grp-plan text-end col-sep" data-val="<?= (float)$p['_calc_rata2_budget'] ?>" style="color: #7e22ce; font-weight: 600;">
                         <div><?= number_format($p['_calc_rata2_budget'], 0, ',', '.') ?></div>
                         <?php if (!empty($p['_total_month_exp'])): ?>
                             <div class="cell-sub" title="Total Pengeluaran Sebulan">Tot: Rp <?= number_format($p['_total_month_exp'], 0, ',', '.') ?></div>
@@ -2137,7 +2165,100 @@ $(document).ready(function() {
         } else {
             $('#filteredCount').text('');
         }
+        updateRowNumbers();
     }
+
+    // 1.1 TABLE COLUMN SORTING
+    let currentSortCol = null;
+    let currentSortDir = 'desc';
+
+    function updateRowNumbers() {
+        let no = 1;
+        $('#tableBody tr').each(function() {
+            let row = $(this);
+            if (row.find('td').length <= 1) return;
+            if (row.is(':visible')) {
+                row.find('td.sticky-col-1').text(no++);
+            }
+        });
+    }
+
+    $(document).on('click', '.sortable-th', function(e) {
+        if ($(e.target).closest('.bulk-edit').length) return;
+
+        let colIndex = parseInt($(this).data('col'), 10);
+        if (isNaN(colIndex)) return;
+
+        // Toggle direction or switch column
+        if (currentSortCol === colIndex) {
+            currentSortDir = (currentSortDir === 'asc') ? 'desc' : 'asc';
+        } else {
+            currentSortCol = colIndex;
+            // Column 1 (Nama Iklan) & Column 0 (No) default to 'asc'
+            // Metric columns (ROAS, QTY, Budget, etc.) default to 'desc' (highest first)
+            currentSortDir = (colIndex === 1 || colIndex === 0) ? 'asc' : 'desc';
+        }
+
+        // Update UI icons
+        $('.sortable-th').removeClass('sorted-asc sorted-desc');
+        $('.sortable-th .sort-icon')
+            .removeClass('bi-arrow-up-short bi-arrow-down-short text-primary')
+            .addClass('bi-arrow-down-up');
+
+        let activeTh = $(this);
+        activeTh.addClass(currentSortDir === 'asc' ? 'sorted-asc' : 'sorted-desc');
+        activeTh.find('.sort-icon')
+            .removeClass('bi-arrow-down-up')
+            .addClass(currentSortDir === 'asc' ? 'bi-arrow-up-short text-primary' : 'bi-arrow-down-short text-primary');
+
+        // Sort rows
+        let rows = $('#tableBody tr').filter(function() {
+            return $(this).find('td').length > 1;
+        }).get();
+
+        rows.sort(function(a, b) {
+            let tdA = $(a).children('td').eq(colIndex);
+            let tdB = $(b).children('td').eq(colIndex);
+
+            let valA = tdA.attr('data-val');
+            let valB = tdB.attr('data-val');
+
+            if (valA === undefined) valA = tdA.text().trim();
+            if (valB === undefined) valB = tdB.text().trim();
+
+            let isDashA = (valA === '-' || valA === '');
+            let isDashB = (valB === '-' || valB === '');
+
+            let numA = parseFloat(valA);
+            let numB = parseFloat(valB);
+
+            let isNumA = (!isNaN(numA) && isFinite(valA)) || isDashA;
+            let isNumB = (!isNaN(numB) && isFinite(valB)) || isDashB;
+
+            if (isDashA) numA = 0;
+            if (isDashB) numB = 0;
+
+            if (isNumA && isNumB) {
+                return currentSortDir === 'asc' ? (numA - numB) : (numB - numA);
+            } else if (isNumA && !isNumB) {
+                return currentSortDir === 'asc' ? -1 : 1;
+            } else if (!isNumA && isNumB) {
+                return currentSortDir === 'asc' ? 1 : -1;
+            } else {
+                let strA = String(valA).toLowerCase();
+                let strB = String(valB).toLowerCase();
+                let comp = strA.localeCompare(strB, 'id', { numeric: true, sensitivity: 'base' });
+                return currentSortDir === 'asc' ? comp : -comp;
+            }
+        });
+
+        let tbody = $('#tableBody');
+        $.each(rows, function(i, row) {
+            tbody.append(row);
+        });
+
+        updateRowNumbers();
+    });
 
     $('#quickSearch').on('input', applyTableFilters);
 
