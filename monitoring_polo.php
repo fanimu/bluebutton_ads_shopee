@@ -1243,6 +1243,7 @@ $days_payday = $days_meta['payday'] ?? 1;
             min-width: 1250px;
             width: 100%;
             background: #ffffff;
+            font-variant-numeric: tabular-nums;
         }
 
         /* === PERIOD EXPAND / COLLAPSE ACCORDION === */
@@ -1294,9 +1295,10 @@ $days_payday = $days_meta['payday'] ?? 1;
         .period-payday-collapsed .grp-payday-summary { border-right: 2px solid #cbd5e1 !important; }
 
         th, td {
-            padding: 6px 9px;
+            padding: 5px 8px;
             vertical-align: middle;
-            font-size: 0.73rem;
+            font-size: 0.72rem;
+            line-height: 1.25;
             border-bottom: 1px solid #f1f5f9;
             border-right: 1px solid #f1f5f9;
         }
@@ -1545,6 +1547,8 @@ $days_payday = $days_meta['payday'] ?? 1;
         .val-roas {
             color: #0284c7;
             font-weight: 700;
+            font-size: 0.73rem;
+            letter-spacing: -0.1px;
         }
         .val-roas.roas-high {
             color: #059669;
@@ -1558,19 +1562,22 @@ $days_payday = $days_meta['payday'] ?? 1;
         .val-bgt {
             color: #be123c;
             font-weight: 600;
+            font-size: 0.72rem;
         }
 
         .val-qty {
             color: #059669;
             font-weight: 600;
+            font-size: 0.72rem;
         }
 
         .cell-sub {
             font-size: 0.58rem;
             color: #64748b;
-            font-weight: normal;
+            font-weight: 500;
             margin-top: 1px;
             white-space: nowrap;
+            line-height: 1.1;
         }
 
         /* === EDITABLE CELLS === */
@@ -1578,6 +1585,7 @@ $days_payday = $days_meta['payday'] ?? 1;
             cursor: pointer;
             color: #4f46e5;
             font-weight: 700;
+            font-size: 0.72rem;
             position: relative;
             transition: all 0.15s;
         }
@@ -1630,20 +1638,21 @@ $days_payday = $days_meta['payday'] ?? 1;
         .status-badge {
             display: inline-flex;
             align-items: center;
-            gap: 4px;
-            font-size: 0.62rem;
+            gap: 3px;
+            font-size: 0.59rem;
             font-weight: 800;
-            padding: 2px 7px;
+            padding: 2px 6px;
             border-radius: 9999px;
-            letter-spacing: 0.4px;
+            letter-spacing: 0.3px;
             white-space: nowrap;
             text-transform: uppercase;
+            line-height: 1.2;
         }
         .status-badge::before {
             content: '';
             display: inline-block;
-            width: 5px;
-            height: 5px;
+            width: 4px;
+            height: 4px;
             border-radius: 50%;
         }
 
@@ -2029,7 +2038,7 @@ $days_payday = $days_meta['payday'] ?? 1;
                     </td>
                     
                     <!-- Col 4: Rata-rata ROAS -->
-                    <td class="grp-metrik-roas text-center val-roas fs-6" data-val="<?= (float)$p['_calc_rata2_roas'] ?>" <?= (!empty($p['_total_month_exp']) && !empty($p['_total_month_gmv'])) ? 'title="Total Biaya: Rp ' . number_format($p['_total_month_exp'], 0, ',', '.') . ' | Total GMV: Rp ' . number_format($p['_total_month_gmv'], 0, ',', '.') . '"' : '' ?>>
+                    <td class="grp-metrik-roas text-center val-roas" data-val="<?= (float)$p['_calc_rata2_roas'] ?>" <?= (!empty($p['_total_month_exp']) && !empty($p['_total_month_gmv'])) ? 'title="Total Biaya: Rp ' . number_format($p['_total_month_exp'], 0, ',', '.') . ' | Total GMV: Rp ' . number_format($p['_total_month_gmv'], 0, ',', '.') . '"' : '' ?>>
                         <?= number_format($p['_calc_rata2_roas'], 0) ?>
                     </td>
                     
@@ -2605,7 +2614,7 @@ $(document).ready(function() {
                                 <td class="fw-bold text-start ps-3">${monthNames[month] || month} ${year}</td>
                                 <td class="text-danger fw-semibold text-end pe-3">${formatRp(sumBgt)}</td>
                                 <td class="text-success fw-semibold text-end pe-3">${formatRp(sumOmz)}</td>
-                                <td class="text-primary fw-bold fs-6">${monthlyRoas}</td>
+                                <td class="text-primary fw-bold">${monthlyRoas}</td>
                                 <td class="fw-bold">${new Intl.NumberFormat('id-ID').format(sumQty)}</td>
                                 <td>${getRoas(h.w1)}</td>
                                 <td>${getRoas(h.w2)}</td>
