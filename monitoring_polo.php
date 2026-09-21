@@ -3,26 +3,37 @@
 // SAFE DATA STORAGE & PERSISTENCE
 // ==========================================
 function resolveDataFilePath() {
-    $possibleDirs = [
-        __DIR__ . '/../ads_data',      // Folder terpisah 1 tingkat (misal: warehouse/ads_data)
-        __DIR__ . '/../../ads_data',    // Folder terpisah 2 tingkat (misal: public_html/ads_data)
-        __DIR__ . '/../data_storage',  // Alternatif folder terpisah di luar Git
-        __DIR__ . '/data_storage',     // Folder penyimpanan internal (di-ignore oleh Git)
-        __DIR__                        // Fallback direktori lokal
+    $candidates = [
+        __DIR__ . '/data_polo.json',
+        __DIR__ . '/../ads_data/data_polo.json',
+        __DIR__ . '/../../ads_data/data_polo.json',
+        __DIR__ . '/data_storage/data_polo.json',
+        __DIR__ . '/../data_storage/data_polo.json'
     ];
 
-    foreach ($possibleDirs as $dir) {
-        if (file_exists($dir . '/data_polo.json')) {
-            return rtrim($dir, '/\\') . '/data_polo.json';
+    // Prioritaskan file yang memiliki ukuran data terbesar (berisi produk nyata)
+    $bestFile = null;
+    $maxSize = -1;
+
+    foreach ($candidates as $file) {
+        if (file_exists($file)) {
+            $sz = filesize($file);
+            if ($sz > $maxSize) {
+                $maxSize = $sz;
+                $bestFile = $file;
+            }
         }
     }
 
-    // Jika belum ada file sebelumnya, prioritaskan folder aman
-    if (@is_dir(__DIR__ . '/../ads_data') || @mkdir(__DIR__ . '/../ads_data', 0755, true)) {
-        return __DIR__ . '/../ads_data/data_polo.json';
-    } elseif (@is_dir(__DIR__ . '/data_storage') || @mkdir(__DIR__ . '/data_storage', 0755, true)) {
-        return __DIR__ . '/data_storage/data_polo.json';
+    if ($bestFile && $maxSize > 500) {
+        // Sinkronisasi ke folder ../ads_data jika folder tersebut ada
+        $securePath = __DIR__ . '/../ads_data/data_polo.json';
+        if ($bestFile !== $securePath && is_dir(dirname($securePath))) {
+            @copy($bestFile, $securePath);
+        }
+        return $bestFile;
     }
+
     return __DIR__ . '/data_polo.json';
 }
 
