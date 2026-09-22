@@ -1,4 +1,9 @@
 <?php
+// Prevent caching on proxies, LiteSpeed, and browsers
+header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+header("Pragma: no-cache");
+header("Expires: 0");
+
 // ==========================================
 // SAFE DATA STORAGE & PERSISTENCE
 // ==========================================
@@ -1761,7 +1766,7 @@ $days_payday = $days_meta['payday'] ?? 1;
         </div>
     </div>
     
-    <form method="GET" class="filter-container" id="filterForm">
+    <form method="GET" action="monitoring_polo.php" class="filter-container" id="filterForm">
         <div class="filter-item">
             <select name="year" onchange="document.getElementById('filterForm').submit()">
                 <?php foreach ($years_list as $y): ?>
