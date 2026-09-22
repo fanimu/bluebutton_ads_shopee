@@ -126,11 +126,11 @@ function determineCategory($name) {
 }
 
 function determineBrand($name) {
-    $nameLower = strtolower($name);
-    if (strpos($nameLower, 'bluebutton') !== false) return 'BLUEBUTTON';
-    if (strpos($nameLower, 'private project') !== false) return 'Private Project';
-    if (strpos($nameLower, 'little pampered') !== false) return 'Little Pampered';
-    if (strpos($nameLower, 'olere') !== false) return 'Olere';
+    $nameClean = strtolower(str_replace([' ', '-', '_'], '', $name ?? ''));
+    if (strpos($nameClean, 'bluebutton') !== false) return 'BLUEBUTTON';
+    if (strpos($nameClean, 'privateproject') !== false) return 'Private Project';
+    if (strpos($nameClean, 'littlepampered') !== false) return 'Little Pampered';
+    if (strpos($nameClean, 'olere') !== false) return 'Olere';
     return 'Lainnya';
 }
 
@@ -217,8 +217,20 @@ $default_month = $latest_month_with_data ?? $current_system_month;
 
 $filter_year = isset($_GET['year']) && !empty($_GET['year']) ? (string)$_GET['year'] : (isset($_POST['up_year']) && !empty($_POST['up_year']) ? (string)$_POST['up_year'] : $default_year);
 $filter_month = isset($_GET['month']) && !empty($_GET['month']) ? str_pad($_GET['month'], 2, '0', STR_PAD_LEFT) : (isset($_POST['up_month']) && !empty($_POST['up_month']) ? str_pad($_POST['up_month'], 2, '0', STR_PAD_LEFT) : $default_month);
+$all_brands = ['BLUEBUTTON', 'Private Project', 'Little Pampered', 'Olere', 'Lainnya'];
 $filter_category = $_GET['cat'] ?? ($_POST['filter_category'] ?? 'Polo Shirt');
-$filter_brand = $_GET['brand'] ?? ($_POST['filter_brand'] ?? 'Semua');
+$filter_brand = trim((string)($_GET['brand'] ?? ($_POST['filter_brand'] ?? 'Semua')));
+if ($filter_brand !== '' && strcasecmp($filter_brand, 'Semua') !== 0) {
+    $norm_filter = strtolower(str_replace([' ', '-', '_'], '', $filter_brand));
+    foreach ($all_brands as $b) {
+        if (strtolower(str_replace([' ', '-', '_'], '', $b)) === $norm_filter) {
+            $filter_brand = $b;
+            break;
+        }
+    }
+} else {
+    $filter_brand = 'Semua';
+}
 
 // ==========================================
 // 2. FORM ACTIONS & AJAX
@@ -293,7 +305,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         foreach ($data['products'] as $kode => &$p) {
             $brand = determineBrand($p['nama'] ?? '');
             $cat_match = ($cat_filter === 'Semua' || strcasecmp($p['kategori'] ?? '', $cat_filter) === 0);
-            $brand_match = ($brand_filter === 'Semua' || strcasecmp($brand, $brand_filter) === 0);
+            $brand_match = ($brand_filter === 'Semua' || strcasecmp(str_replace(' ', '', $brand), str_replace(' ', '', $brand_filter)) === 0);
             
             if ($cat_match && $brand_match) {
                 $p[$field] = $value;
@@ -605,7 +617,6 @@ foreach ($data['products'] as &$p) {
 unset($p);
 
 $all_categories = [];
-$all_brands = ['BLUEBUTTON', 'Private Project', 'Little Pampered', 'Olere', 'Lainnya'];
 $available_years = [];
 
 foreach ($data['products'] as $p) {
@@ -622,9 +633,32 @@ sort($all_categories);
 $years_list = array_keys($available_years);
 rsort($years_list); 
 
-if ($filter_category !== 'Semua' && !in_array($filter_category, $all_categories) && count($all_categories) > 0) {
-    $filter_category = $all_categories[0];
+// Kategori yang benar-benar ada pada brand yang sedang aktif
+$brand_categories = [];
+foreach ($data['products'] as $p) {
+    $b = determineBrand($p['nama'] ?? '');
+    if ($filter_brand === 'Semua' || strcasecmp(str_replace(' ', '', $b), str_replace(' ', '', $filter_brand)) === 0) {
+        if (!empty($p['kategori'])) {
+            $brand_categories[$p['kategori']] = true;
+        }
+    }
 }
+$brand_categories = array_keys($brand_categories);
+sort($brand_categories);
+
+// Validasi kategori terpilih
+if ($filter_brand !== 'Semua') {
+    // Jika user memilih brand spesifik dan kategori saat ini tidak ada pada brand tersebut, fallback ke 'Semua'
+    if ($filter_category !== 'Semua' && !in_array($filter_category, $brand_categories)) {
+        $filter_category = 'Semua';
+    }
+} else {
+    if ($filter_category !== 'Semua' && !in_array($filter_category, $all_categories) && count($all_categories) > 0) {
+        $filter_category = $all_categories[0];
+    }
+}
+
+$display_categories = ($filter_brand === 'Semua' ? $all_categories : $brand_categories);
 
 $days_meta = $data['meta_period_days'][$filter_year][$filter_month] ?? [];
 
@@ -687,7 +721,7 @@ foreach ($data['products'] as $kode => $p) {
     $brand = determineBrand($p['nama'] ?? '');
     
     $cat_match = ($filter_category === 'Semua' || (isset($p['kategori']) && $p['kategori'] === $filter_category));
-    $brand_match = ($filter_brand === 'Semua' || $brand === $brand_filter);
+    $brand_match = ($filter_brand === 'Semua' || strcasecmp(str_replace(' ', '', $brand), str_replace(' ', '', $filter_brand)) === 0);
     
     if ($cat_match && $brand_match) {
         
@@ -1759,7 +1793,7 @@ $days_payday = $days_meta['payday'] ?? 1;
         <div class="filter-item">
             <select name="cat" onchange="document.getElementById('filterForm').submit()">
                 <option value="Semua">SEMUA KATEGORI</option>
-                <?php foreach ($all_categories as $cat): ?>
+                <?php foreach ($display_categories as $cat): ?>
                 <option value="<?= $cat ?>" <?= $filter_category === $cat ? 'selected' : '' ?>><?= strtoupper($cat) ?></option>
                 <?php endforeach; ?>
             </select>
