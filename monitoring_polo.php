@@ -410,6 +410,69 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         exit;
     }
     
+    if (isset($_POST['action']) && $_POST['action'] === 'rename_category') {
+        $old_name = trim($_POST['old_name'] ?? '');
+        $new_name = trim($_POST['new_name'] ?? '');
+        
+        if ($old_name !== '' && $new_name !== '') {
+            if (isset($data['custom_categories']) && is_array($data['custom_categories'])) {
+                $idx = array_search($old_name, $data['custom_categories']);
+                if ($idx !== false) {
+                    $data['custom_categories'][$idx] = $new_name;
+                } else {
+                    $data['custom_categories'][] = $new_name;
+                }
+            }
+            
+            $updated_count = 0;
+            foreach ($data['products'] as $kode => &$p) {
+                if (($p['kategori'] ?? '') === $old_name) {
+                    $p['kategori'] = $new_name;
+                    $updated_count++;
+                    if ($db_conn) {
+                        $c_id_esc = mysqli_real_escape_string($db_conn, $kode);
+                        $cat_esc = mysqli_real_escape_string($db_conn, strtoupper($new_name));
+                        mysqli_query($db_conn, "UPDATE shopee_ads_targets SET category = '$cat_esc', updated_at = NOW() WHERE campaign_id = '$c_id_esc'");
+                    }
+                }
+            }
+            unset($p);
+            
+            saveDataWithBackup($dataFile, $data);
+            echo json_encode(['status' => 'success', 'message' => "Kategori berhasil diubah menjadi $new_name"]);
+        } else {
+            echo json_encode(['status' => 'error', 'message' => 'Nama kategori tidak valid']);
+        }
+        exit;
+    }
+
+    if (isset($_POST['action']) && $_POST['action'] === 'delete_category') {
+        $cat_name = trim($_POST['category_name'] ?? '');
+        if ($cat_name !== '') {
+            if (isset($data['custom_categories']) && is_array($data['custom_categories'])) {
+                $idx = array_search($cat_name, $data['custom_categories']);
+                if ($idx !== false) {
+                    array_splice($data['custom_categories'], $idx, 1);
+                }
+            }
+            foreach ($data['products'] as $kode => &$p) {
+                if (($p['kategori'] ?? '') === $cat_name) {
+                    $p['kategori'] = 'Lainnya';
+                    if ($db_conn) {
+                        $c_id_esc = mysqli_real_escape_string($db_conn, $kode);
+                        mysqli_query($db_conn, "UPDATE shopee_ads_targets SET category = 'LAINNYA', updated_at = NOW() WHERE campaign_id = '$c_id_esc'");
+                    }
+                }
+            }
+            unset($p);
+            saveDataWithBackup($dataFile, $data);
+            echo json_encode(['status' => 'success', 'message' => "Kategori $cat_name berhasil dihapus"]);
+        } else {
+            echo json_encode(['status' => 'error', 'message' => 'Kategori tidak ditemukan']);
+        }
+        exit;
+    }
+    
     if (isset($_POST['action']) && $_POST['action'] === 'get_history') {
         $kode = $_POST['kode'];
         if (isset($data['products'][$kode])) {
@@ -2455,14 +2518,34 @@ $days_payday = $days_meta['payday'] ?? 1;
           <div class="row g-4">
               <!-- Sidebar: Buat Kategori -->
               <div class="col-md-4">
-                  <div class="card border-0 shadow-sm rounded-3">
-                      <div class="card-body p-3">
+                  <div class="card border-0 shadow-sm rounded-3 h-100">
+                      <div class="card-body p-3 d-flex flex-column">
                           <h6 class="fw-bold mb-3 border-bottom pb-2">Buat Kategori Baru</h6>
-                          <div class="input-group mb-2">
+                          <div class="input-group mb-4">
                               <input type="text" id="newCategoryName" class="form-control" placeholder="Nama Kategori...">
                               <button class="btn btn-primary" id="btnCreateCategory" type="button"><i class="bi bi-plus-lg"></i></button>
                           </div>
-                          <small class="text-muted">Kategori yang baru dibuat akan muncul di dropdown pemilihan kategori.</small>
+                          
+                          <h6 class="fw-bold mb-2 border-bottom pb-2">Daftar Kategori Utama</h6>
+                          <div class="overflow-auto flex-grow-1 border rounded" style="max-height: 250px;">
+                              <ul class="list-group list-group-flush" id="savedCategoryList">
+                                  <?php 
+                                  $master_cats = isset($data['custom_categories']) && is_array($data['custom_categories']) ? $data['custom_categories'] : [];
+                                  sort($master_cats);
+                                  foreach ($master_cats as $c): ?>
+                                  <li class="list-group-item d-flex justify-content-between align-items-center px-2 py-2">
+                                      <span class="fw-medium text-dark cat-name-text" style="font-size: 0.8rem;"><?= htmlspecialchars($c) ?></span>
+                                      <div class="btn-group">
+                                          <button class="btn btn-sm btn-light border text-primary btn-rename-cat" data-cat="<?= htmlspecialchars($c) ?>" title="Ganti Nama"><i class="bi bi-pencil-square"></i></button>
+                                          <button class="btn btn-sm btn-light border text-danger btn-delete-cat" data-cat="<?= htmlspecialchars($c) ?>" title="Hapus"><i class="bi bi-trash"></i></button>
+                                      </div>
+                                  </li>
+                                  <?php endforeach; ?>
+                                  <?php if(empty($master_cats)): ?>
+                                  <li class="list-group-item text-center text-muted small py-3 border-0">Belum ada kategori yang dibuat.</li>
+                                  <?php endif; ?>
+                              </ul>
+                          </div>
                       </div>
                   </div>
               </div>
@@ -2652,6 +2735,58 @@ $(document).ready(function() {
         }).fail(function() {
             alert('Gagal menghubungi server.');
             $('#btnCreateCategory').prop('disabled', false).html('<i class="bi bi-plus-lg"></i>');
+        });
+    });
+    
+    $(document).on('click', '.btn-rename-cat', function() {
+        let oldName = $(this).data('cat');
+        let newName = prompt('Masukkan nama baru untuk kategori "' + oldName + '":', oldName);
+        
+        if (newName !== null) {
+            newName = newName.trim();
+            if (newName === '' || newName === oldName) return;
+            
+            $(this).prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span>');
+            
+            $.post('monitoring_polo.php', {
+                action: 'rename_category',
+                old_name: oldName,
+                new_name: newName
+            }, function(res) {
+                let data = JSON.parse(res);
+                if (data.status === 'success') {
+                    window.location.reload();
+                } else {
+                    alert(data.message);
+                    window.location.reload();
+                }
+            }).fail(function() {
+                alert('Gagal menghubungi server.');
+                window.location.reload();
+            });
+        }
+    });
+
+    $(document).on('click', '.btn-delete-cat', function() {
+        let cat = $(this).data('cat');
+        if (!confirm('Yakin ingin menghapus kategori "' + cat + '"?\n\nIklan yang ada di kategori ini akan dikembalikan ke "Lainnya".')) return;
+        
+        $(this).prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span>');
+        
+        $.post('monitoring_polo.php', {
+            action: 'delete_category',
+            category_name: cat
+        }, function(res) {
+            let data = JSON.parse(res);
+            if (data.status === 'success') {
+                window.location.reload();
+            } else {
+                alert(data.message);
+                window.location.reload();
+            }
+        }).fail(function() {
+            alert('Gagal menghubungi server.');
+            window.location.reload();
         });
     });
     
