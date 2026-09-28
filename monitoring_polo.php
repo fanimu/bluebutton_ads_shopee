@@ -355,6 +355,61 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         exit;
     }
     
+    if (isset($_POST['action']) && $_POST['action'] === 'create_custom_category') {
+        $cat_name = trim($_POST['category_name'] ?? '');
+        if ($cat_name) {
+            if (!isset($data['custom_categories'])) {
+                $data['custom_categories'] = [];
+            }
+            if (!in_array($cat_name, $data['custom_categories'])) {
+                $data['custom_categories'][] = $cat_name;
+                saveDataWithBackup($dataFile, $data);
+                echo json_encode(['status' => 'success', 'category' => $cat_name]);
+            } else {
+                echo json_encode(['status' => 'error', 'message' => 'Kategori sudah ada']);
+            }
+        } else {
+            echo json_encode(['status' => 'error', 'message' => 'Nama kategori tidak valid']);
+        }
+        exit;
+    }
+    
+    if (isset($_POST['action']) && $_POST['action'] === 'assign_category_bulk') {
+        $cat_name = trim($_POST['category_name'] ?? '');
+        $product_kodes = $_POST['product_kodes'] ?? [];
+        
+        if ($cat_name && is_array($product_kodes) && count($product_kodes) > 0) {
+            $updated_count = 0;
+            foreach ($product_kodes as $kode) {
+                if (isset($data['products'][$kode])) {
+                    $data['products'][$kode]['kategori'] = $cat_name;
+                    $updated_count++;
+                    
+                    if ($db_conn) {
+                        $c_id = $data['products'][$kode]['kode'] ?? $kode;
+                        $ad_name = $data['products'][$kode]['nama'] ?? '';
+                        $c_id_esc = mysqli_real_escape_string($db_conn, $c_id);
+                        $ad_name_esc = mysqli_real_escape_string($db_conn, $ad_name);
+                        $cat_esc = mysqli_real_escape_string($db_conn, strtoupper($cat_name));
+                        
+                        mysqli_query($db_conn, "UPDATE shopee_ads_targets 
+                                               SET category = '$cat_esc', updated_at = NOW() 
+                                               WHERE campaign_id = '$c_id_esc' OR ad_name = '$ad_name_esc'");
+                    }
+                }
+            }
+            
+            if ($updated_count > 0) {
+                saveDataWithBackup($dataFile, $data);
+            }
+            
+            echo json_encode(['status' => 'success', 'count' => $updated_count, 'category' => $cat_name]);
+        } else {
+            echo json_encode(['status' => 'error', 'message' => 'Data tidak valid']);
+        }
+        exit;
+    }
+    
     if (isset($_POST['action']) && $_POST['action'] === 'get_history') {
         $kode = $_POST['kode'];
         if (isset($data['products'][$kode])) {
@@ -624,6 +679,12 @@ unset($p);
 $all_categories = [];
 $available_years = [];
 
+if (isset($data['custom_categories']) && is_array($data['custom_categories'])) {
+    foreach ($data['custom_categories'] as $cc) {
+        $all_categories[$cc] = true;
+    }
+}
+
 foreach ($data['products'] as $p) {
     if (isset($p['kategori'])) $all_categories[$p['kategori']] = true;
     if (isset($p['history'])) {
@@ -714,6 +775,7 @@ function getRoasStatus($roas, $target_roas) {
 }
 
 $products = [];
+$category_performance = [];
 $kpi_total_spend = 0;
 $kpi_total_gmv = 0;
 $kpi_total_qty = 0;
@@ -725,8 +787,41 @@ $kpi_bad_count = 0;
 foreach ($data['products'] as $kode => $p) {
     $brand = determineBrand($p['nama'] ?? '');
     
-    $cat_match = ($filter_category === 'Semua' || (isset($p['kategori']) && $p['kategori'] === $filter_category));
+    $cat = $p['kategori'] ?? 'Lainnya';
     $brand_match = ($filter_brand === 'Semua' || strcasecmp(str_replace(' ', '', $brand), str_replace(' ', '', $filter_brand)) === 0);
+    
+    if ($brand_match) {
+        if (!isset($category_performance[$cat])) {
+            $category_performance[$cat] = [
+                'w1' => ['biaya' => 0, 'omzet' => 0, 'qty' => 0],
+                'w2' => ['biaya' => 0, 'omzet' => 0, 'qty' => 0],
+                'w3' => ['biaya' => 0, 'omzet' => 0, 'qty' => 0],
+                'w4' => ['biaya' => 0, 'omzet' => 0, 'qty' => 0],
+                'twin' => ['biaya' => 0, 'omzet' => 0, 'qty' => 0],
+                'payday' => ['biaya' => 0, 'omzet' => 0, 'qty' => 0],
+                'total' => ['biaya' => 0, 'omzet' => 0, 'qty' => 0],
+                'product_count' => 0
+            ];
+        }
+        $category_performance[$cat]['product_count']++;
+        
+        $h_tmp = $p['history'][$filter_year][$filter_month] ?? [];
+        foreach (['w1', 'w2', 'w3', 'w4', 'twin', 'payday'] as $w) {
+            $b_tmp = $h_tmp[$w]['biaya'] ?? 0;
+            $o_tmp = $h_tmp[$w]['omzet'] ?? 0;
+            $q_tmp = $h_tmp[$w]['qty'] ?? 0;
+            
+            $category_performance[$cat][$w]['biaya'] += $b_tmp;
+            $category_performance[$cat][$w]['omzet'] += $o_tmp;
+            $category_performance[$cat][$w]['qty'] += $q_tmp;
+            
+            $category_performance[$cat]['total']['biaya'] += $b_tmp;
+            $category_performance[$cat]['total']['omzet'] += $o_tmp;
+            $category_performance[$cat]['total']['qty'] += $q_tmp;
+        }
+    }
+    
+    $cat_match = ($filter_category === 'Semua' || (isset($p['kategori']) && $p['kategori'] === $filter_category));
     
     if ($cat_match && $brand_match) {
         
@@ -1899,6 +1994,14 @@ $days_payday = $days_meta['payday'] ?? 1;
 
     <!-- Action Buttons -->
     <div class="action-btns-group">
+        <button class="btn-modern btn-modern-outline text-primary border-primary" data-bs-toggle="modal" data-bs-target="#categoryManagerModal" title="Manajemen Kategori">
+            <i class="bi bi-folder-fill"></i> Manajemen Kategori
+        </button>
+
+        <button class="btn-modern btn-modern-outline text-primary border-primary" onclick="showCategoryPerformance()" title="Lihat Performa Kategori">
+            <i class="bi bi-graph-up"></i> Performa Kategori
+        </button>
+
         <button class="btn-modern btn-modern-primary" data-bs-toggle="modal" data-bs-target="#uploadModal">
             <i class="bi bi-cloud-arrow-up-fill"></i> Upload Slot
         </button>
@@ -2338,6 +2441,127 @@ $days_payday = $days_meta['payday'] ?? 1;
   </div>
 </div>
 
+<!-- Modal: Manajemen Kategori -->
+<div class="modal fade" id="categoryManagerModal" tabindex="-1">
+  <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+      <div class="modal-header bg-slate-900 text-white border-0 py-3 px-4" style="background: #0f172a;">
+        <h5 class="modal-title fw-bold fs-6"><i class="bi bi-folder-fill me-2 text-primary"></i>Manajemen Kategori</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4 bg-light">
+          <div class="row g-4">
+              <!-- Sidebar: Buat Kategori -->
+              <div class="col-md-4">
+                  <div class="card border-0 shadow-sm rounded-3">
+                      <div class="card-body p-3">
+                          <h6 class="fw-bold mb-3 border-bottom pb-2">Buat Kategori Baru</h6>
+                          <div class="input-group mb-2">
+                              <input type="text" id="newCategoryName" class="form-control" placeholder="Nama Kategori...">
+                              <button class="btn btn-primary" id="btnCreateCategory" type="button"><i class="bi bi-plus-lg"></i></button>
+                          </div>
+                          <small class="text-muted">Kategori yang baru dibuat akan muncul di dropdown pemilihan kategori.</small>
+                      </div>
+                  </div>
+              </div>
+
+              <!-- Main: Assign Iklan ke Kategori -->
+              <div class="col-md-8">
+                  <div class="card border-0 shadow-sm rounded-3 h-100">
+                      <div class="card-body p-3 d-flex flex-column">
+                          <h6 class="fw-bold mb-3 border-bottom pb-2">Assign Iklan ke Kategori</h6>
+                          
+                          <div class="d-flex gap-2 mb-3">
+                              <select class="form-select flex-grow-1" id="assignCategorySelect">
+                                  <option value="" disabled selected>-- Pilih Kategori Tujuan --</option>
+                                  <?php foreach ($all_categories as $c): ?>
+                                  <option value="<?= htmlspecialchars($c) ?>"><?= htmlspecialchars($c) ?></option>
+                                  <?php endforeach; ?>
+                              </select>
+                              <button class="btn btn-success fw-bold" id="btnAssignCategory" disabled>
+                                  <i class="bi bi-check2-all me-1"></i> Terapkan
+                              </button>
+                          </div>
+
+                          <div class="mb-2 position-relative">
+                              <i class="bi bi-search position-absolute" style="left: 12px; top: 50%; transform: translateY(-50%); color: #94a3b8;"></i>
+                              <input type="text" id="catProductSearch" class="form-control ps-5" placeholder="Cari produk iklan...">
+                          </div>
+
+                          <div class="border rounded-3 p-0 overflow-auto" style="max-height: 300px;">
+                              <table class="table table-hover mb-0" style="font-size: 0.8rem;">
+                                  <thead class="table-light sticky-top">
+                                      <tr>
+                                          <th class="text-center" style="width: 40px;">
+                                              <input class="form-check-input" type="checkbox" id="checkAllProducts">
+                                          </th>
+                                          <th>Nama Iklan</th>
+                                          <th>Kategori Saat Ini</th>
+                                      </tr>
+                                  </thead>
+                                  <tbody id="catProductList">
+                                      <!-- Diisi via JS -->
+                                  </tbody>
+                              </table>
+                          </div>
+                      </div>
+                  </div>
+              </div>
+          </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Performa Kategori -->
+<div class="modal fade" id="categoryPerformanceModal" tabindex="-1">
+  <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+      <div class="modal-header bg-slate-900 text-white border-0 py-3 px-4" style="background: #0f172a;">
+        <div class="d-flex align-items-center gap-3">
+            <div class="bg-primary text-white p-2 rounded-3">
+                <i class="bi bi-graph-up fs-5"></i>
+            </div>
+            <div>
+                <h5 class="modal-title fw-bold fs-6 mb-0">PERFORMA KATEGORI</h5>
+                <small class="text-white-50">Analisa perbandingan ROAS antar kategori (Filter: <?= htmlspecialchars($filter_brand) ?>)</small>
+            </div>
+        </div>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-0 bg-light">
+          <div class="table-responsive bg-white">
+              <table class="table table-hover table-bordered mb-0 text-center" style="font-size: 0.75rem; min-width: 1000px;">
+                  <thead style="background: #f8fafc; color: #475569;">
+                      <tr>
+                          <th rowspan="2" class="align-middle text-start ps-3">KATEGORI</th>
+                          <th rowspan="2" class="align-middle">JML IKLAN</th>
+                          <th colspan="3" class="bg-primary-subtle text-primary">TOTAL KESELURUHAN</th>
+                          <th colspan="6">ROAS PER PERIODE</th>
+                      </tr>
+                      <tr>
+                          <th class="bg-primary-subtle text-primary">BIAYA</th>
+                          <th class="bg-primary-subtle text-primary">OMZET</th>
+                          <th class="bg-primary-subtle text-primary border-end">ROAS</th>
+                          
+                          <th>W1</th>
+                          <th>W2</th>
+                          <th>W3</th>
+                          <th>W4</th>
+                          <th class="text-warning-emphasis">TWIN</th>
+                          <th class="text-success-emphasis">PAYDAY</th>
+                      </tr>
+                  </thead>
+                  <tbody id="catPerfTbody">
+                      <!-- Diisi via JS -->
+                  </tbody>
+              </table>
+          </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ========================================== -->
 <!-- 6. SCRIPTS                                 -->
 <!-- ========================================== -->
@@ -2346,6 +2570,162 @@ $days_payday = $days_meta['payday'] ?? 1;
 
 <script>
 $(document).ready(function() {
+
+    // === CATEGORY MANAGEMENT & PERFORMANCE ===
+    const ALL_PRODUCTS = <?= json_encode(array_values(array_map(function($k, $p) {
+        return [
+            'kode' => $k,
+            'nama' => $p['nama'],
+            'kategori' => $p['kategori'] ?? 'Lainnya'
+        ];
+    }, array_keys($data['products']), $data['products']))) ?>;
+    
+    const CATEGORY_PERFORMANCE = <?= json_encode($category_performance) ?>;
+    
+    function renderProductList(filterText = '') {
+        let html = '';
+        const search = filterText.toLowerCase();
+        ALL_PRODUCTS.forEach(p => {
+            if (search === '' || p.nama.toLowerCase().includes(search) || p.kategori.toLowerCase().includes(search)) {
+                html += `
+                    <tr>
+                        <td class="text-center">
+                            <input class="form-check-input product-check" type="checkbox" value="${p.kode}">
+                        </td>
+                        <td class="fw-bold">${p.nama}</td>
+                        <td><span class="badge bg-secondary">${p.kategori}</span></td>
+                    </tr>
+                `;
+            }
+        });
+        $('#catProductList').html(html);
+        updateAssignBtn();
+    }
+    
+    $('#categoryManagerModal').on('show.bs.modal', function () {
+        $('#catProductSearch').val('');
+        $('#checkAllProducts').prop('checked', false);
+        renderProductList();
+    });
+    
+    $('#catProductSearch').on('input', function() {
+        renderProductList($(this).val());
+        $('#checkAllProducts').prop('checked', false);
+    });
+    
+    $('#checkAllProducts').on('change', function() {
+        $('.product-check').prop('checked', $(this).is(':checked'));
+        updateAssignBtn();
+    });
+    
+    $(document).on('change', '.product-check', function() {
+        updateAssignBtn();
+    });
+    
+    $('#assignCategorySelect').on('change', updateAssignBtn);
+    
+    function updateAssignBtn() {
+        let checked = $('.product-check:checked').length;
+        let cat = $('#assignCategorySelect').val();
+        $('#btnAssignCategory').prop('disabled', checked === 0 || !cat);
+    }
+    
+    $('#btnCreateCategory').on('click', function() {
+        let name = $('#newCategoryName').val().trim();
+        if (!name) return;
+        $(this).prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span>');
+        
+        $.post('monitoring_polo.php', {
+            action: 'create_custom_category',
+            category_name: name
+        }, function(res) {
+            let data = JSON.parse(res);
+            if (data.status === 'success') {
+                alert('Kategori berhasil dibuat!');
+                window.location.reload();
+            } else {
+                alert(data.message);
+                $('#btnCreateCategory').prop('disabled', false).html('<i class="bi bi-plus-lg"></i>');
+            }
+        }).fail(function() {
+            alert('Gagal menghubungi server.');
+            $('#btnCreateCategory').prop('disabled', false).html('<i class="bi bi-plus-lg"></i>');
+        });
+    });
+    
+    $('#btnAssignCategory').on('click', function() {
+        let cat = $('#assignCategorySelect').val();
+        let kodes = [];
+        $('.product-check:checked').each(function() {
+            kodes.push($(this).val());
+        });
+        
+        if (!cat || kodes.length === 0) return;
+        
+        if (!confirm(`Assign ${kodes.length} iklan ke kategori "${cat}"?`)) return;
+        
+        $(this).prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span> Menyimpan...');
+        
+        $.post('monitoring_polo.php', {
+            action: 'assign_category_bulk',
+            category_name: cat,
+            product_kodes: kodes
+        }, function(res) {
+            let data = JSON.parse(res);
+            if (data.status === 'success') {
+                alert(`${data.count} iklan berhasil diubah kategorinya.`);
+                window.location.reload();
+            } else {
+                alert(data.message);
+                $('#btnAssignCategory').prop('disabled', false).html('<i class="bi bi-check2-all me-1"></i> Terapkan');
+            }
+        }).fail(function() {
+            alert('Gagal menghubungi server.');
+            $('#btnAssignCategory').prop('disabled', false).html('<i class="bi bi-check2-all me-1"></i> Terapkan');
+        });
+    });
+    
+    window.showCategoryPerformance = function() {
+        let html = '';
+        let formatRp = (num) => 'Rp ' + new Intl.NumberFormat('id-ID').format(num);
+        
+        let getRoas = (wData) => {
+            if (!wData || wData.biaya == 0) return '<span class="text-muted opacity-40">-</span>';
+            let r = Math.round(wData.omzet / wData.biaya);
+            return r > 0 ? `<span class="fw-bold">${r}</span>` : '<span class="text-muted opacity-40">-</span>';
+        };
+        
+        let keys = Object.keys(CATEGORY_PERFORMANCE).sort();
+        if (keys.length === 0) {
+            html = '<tr><td colspan="11" class="text-center py-4 text-muted">Tidak ada data kategori untuk filter saat ini.</td></tr>';
+        } else {
+            keys.forEach(cat => {
+                let d = CATEGORY_PERFORMANCE[cat];
+                let roasTotal = d.total.biaya > 0 ? Math.round(d.total.omzet / d.total.biaya) : 0;
+                
+                html += `
+                    <tr>
+                        <td class="text-start ps-3 fw-bold">${cat}</td>
+                        <td class="fw-bold text-secondary">${d.product_count}</td>
+                        <td class="text-danger fw-semibold">${formatRp(d.total.biaya)}</td>
+                        <td class="text-success fw-semibold">${formatRp(d.total.omzet)}</td>
+                        <td class="text-primary fw-bold fs-6 border-end">${roasTotal > 0 ? roasTotal : '-'}</td>
+                        
+                        <td>${getRoas(d.w1)}</td>
+                        <td>${getRoas(d.w2)}</td>
+                        <td>${getRoas(d.w3)}</td>
+                        <td>${getRoas(d.w4)}</td>
+                        <td class="text-warning-emphasis">${getRoas(d.twin)}</td>
+                        <td class="text-success-emphasis">${getRoas(d.payday)}</td>
+                    </tr>
+                `;
+            });
+        }
+        
+        $('#catPerfTbody').html(html);
+        let modal = new bootstrap.Modal(document.getElementById('categoryPerformanceModal'));
+        modal.show();
+    };
 
     const monthNames = {
         '01': 'Januari', '02': 'Februari', '03': 'Maret', '04': 'April',
