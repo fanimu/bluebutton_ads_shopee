@@ -800,10 +800,12 @@ foreach ($data['products'] as $kode => $p) {
                 'twin' => ['biaya' => 0, 'omzet' => 0, 'qty' => 0],
                 'payday' => ['biaya' => 0, 'omzet' => 0, 'qty' => 0],
                 'total' => ['biaya' => 0, 'omzet' => 0, 'qty' => 0],
-                'product_count' => 0
+                'product_count' => 0,
+                'products' => []
             ];
         }
         $category_performance[$cat]['product_count']++;
+        $category_performance[$cat]['products'][] = $p['nama'];
         
         $h_tmp = $p['history'][$filter_year][$filter_month] ?? [];
         foreach (['w1', 'w2', 'w3', 'w4', 'twin', 'payday'] as $w) {
@@ -2702,10 +2704,15 @@ $(document).ready(function() {
             keys.forEach(cat => {
                 let d = CATEGORY_PERFORMANCE[cat];
                 let roasTotal = d.total.biaya > 0 ? Math.round(d.total.omzet / d.total.biaya) : 0;
+                let safeCatId = 'cat-detail-' + cat.replace(/[^a-zA-Z0-9]/g, '-');
+                
+                let adList = d.products && d.products.length > 0 
+                    ? d.products.map(name => `<span class="badge bg-white text-dark border me-1 mb-1 fw-normal shadow-sm" style="font-size: 0.7rem;">${name}</span>`).join('')
+                    : '<span class="text-muted italic">Tidak ada iklan aktif</span>';
                 
                 html += `
-                    <tr>
-                        <td class="text-start ps-3 fw-bold">${cat}</td>
+                    <tr style="cursor: pointer;" onclick="$('#${safeCatId}').toggle()" title="Klik untuk lihat daftar iklan">
+                        <td class="text-start ps-3 fw-bold text-primary"><i class="bi bi-chevron-expand me-1"></i>${cat}</td>
                         <td class="fw-bold text-secondary">${d.product_count}</td>
                         <td class="text-danger fw-semibold">${formatRp(d.total.biaya)}</td>
                         <td class="text-success fw-semibold">${formatRp(d.total.omzet)}</td>
@@ -2717,6 +2724,12 @@ $(document).ready(function() {
                         <td>${getRoas(d.w4)}</td>
                         <td class="text-warning-emphasis">${getRoas(d.twin)}</td>
                         <td class="text-success-emphasis">${getRoas(d.payday)}</td>
+                    </tr>
+                    <tr id="${safeCatId}" style="display: none; background-color: #f1f5f9;">
+                        <td colspan="11" class="text-start p-3 border-bottom shadow-inner">
+                            <div class="fw-bold text-muted mb-2" style="font-size: 0.7rem; text-transform: uppercase;">Daftar Iklan Kategori ${cat} (${d.product_count} Iklan):</div>
+                            <div>${adList}</div>
+                        </td>
                     </tr>
                 `;
             });
