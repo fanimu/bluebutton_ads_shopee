@@ -387,8 +387,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     if (isset($_POST['action']) && $_POST['action'] === 'assign_category_bulk') {
         $cat_name = trim($_POST['category_name'] ?? '');
         $product_kodes = $_POST['product_kodes'] ?? [];
+        $unassigned_kodes = $_POST['unassigned_kodes'] ?? [];
         
-        if ($cat_name && is_array($product_kodes) && count($product_kodes) > 0) {
+        if ($cat_name && (is_array($product_kodes) || is_array($unassigned_kodes))) {
             if (!isset($data['custom_categories'])) {
                 $data['custom_categories'] = [];
             }
@@ -397,21 +398,43 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             }
             
             $updated_count = 0;
-            foreach ($product_kodes as $kode) {
-                if (isset($data['products'][$kode])) {
-                    $data['products'][$kode]['kategori'] = $cat_name;
-                    $updated_count++;
-                    
-                    if ($db_conn) {
-                        $c_id = $data['products'][$kode]['kode'] ?? $kode;
-                        $ad_name = $data['products'][$kode]['nama'] ?? '';
-                        $c_id_esc = mysqli_real_escape_string($db_conn, $c_id);
-                        $ad_name_esc = mysqli_real_escape_string($db_conn, $ad_name);
-                        $cat_esc = mysqli_real_escape_string($db_conn, strtoupper($cat_name));
+            if (is_array($product_kodes)) {
+                foreach ($product_kodes as $kode) {
+                    if (isset($data['products'][$kode])) {
+                        $data['products'][$kode]['kategori'] = $cat_name;
+                        $updated_count++;
                         
-                        mysqli_query($db_conn, "UPDATE shopee_ads_targets 
-                                               SET category = '$cat_esc', updated_at = NOW() 
-                                               WHERE campaign_id = '$c_id_esc' OR ad_name = '$ad_name_esc'");
+                        if ($db_conn) {
+                            $c_id = $data['products'][$kode]['kode'] ?? $kode;
+                            $ad_name = $data['products'][$kode]['nama'] ?? '';
+                            $c_id_esc = mysqli_real_escape_string($db_conn, $c_id);
+                            $ad_name_esc = mysqli_real_escape_string($db_conn, $ad_name);
+                            $cat_esc = mysqli_real_escape_string($db_conn, strtoupper($cat_name));
+                            
+                            mysqli_query($db_conn, "UPDATE shopee_ads_targets 
+                                                   SET category = '$cat_esc', updated_at = NOW() 
+                                                   WHERE campaign_id = '$c_id_esc' OR ad_name = '$ad_name_esc'");
+                        }
+                    }
+                }
+            }
+            
+            if (is_array($unassigned_kodes)) {
+                foreach ($unassigned_kodes as $kode) {
+                    if (isset($data['products'][$kode])) {
+                        $data['products'][$kode]['kategori'] = 'Belum Dikategorikan';
+                        $updated_count++;
+                        
+                        if ($db_conn) {
+                            $c_id = $data['products'][$kode]['kode'] ?? $kode;
+                            $ad_name = $data['products'][$kode]['nama'] ?? '';
+                            $c_id_esc = mysqli_real_escape_string($db_conn, $c_id);
+                            $ad_name_esc = mysqli_real_escape_string($db_conn, $ad_name);
+                            
+                            mysqli_query($db_conn, "UPDATE shopee_ads_targets 
+                                                   SET category = 'Belum Dikategorikan', updated_at = NOW() 
+                                                   WHERE campaign_id = '$c_id_esc' OR ad_name = '$ad_name_esc'");
+                        }
                     }
                 }
             }
@@ -2590,11 +2613,11 @@ $days_payday = $days_meta['payday'] ?? 1;
                                   $master_cats = isset($data['custom_categories']) && is_array($data['custom_categories']) ? $data['custom_categories'] : [];
                                   sort($master_cats);
                                   foreach ($master_cats as $c): ?>
-                                  <li class="list-group-item d-flex justify-content-between align-items-center px-2 py-2">
-                                      <span class="fw-medium text-dark cat-name-text" style="font-size: 0.8rem;"><?= htmlspecialchars($c) ?></span>
+                                  <li class="list-group-item d-flex justify-content-between align-items-center px-2 py-2 category-list-item" style="cursor: pointer;" data-cat="<?= htmlspecialchars($c) ?>" onclick="setActiveCategory(this)">
+                                      <span class="fw-medium text-dark cat-name-text" style="font-size: 0.8rem; pointer-events: none;"><?= htmlspecialchars($c) ?></span>
                                       <div class="btn-group">
-                                          <button class="btn btn-sm btn-light border text-primary btn-rename-cat" data-cat="<?= htmlspecialchars($c) ?>" title="Ganti Nama"><i class="bi bi-pencil-square"></i></button>
-                                          <button class="btn btn-sm btn-light border text-danger btn-delete-cat" data-cat="<?= htmlspecialchars($c) ?>" title="Hapus"><i class="bi bi-trash"></i></button>
+                                          <button class="btn btn-sm btn-light border text-primary btn-rename-cat" data-cat="<?= htmlspecialchars($c) ?>" title="Ganti Nama" onclick="event.stopPropagation();"><i class="bi bi-pencil-square"></i></button>
+                                          <button class="btn btn-sm btn-light border text-danger btn-delete-cat" data-cat="<?= htmlspecialchars($c) ?>" title="Hapus" onclick="event.stopPropagation();"><i class="bi bi-trash"></i></button>
                                       </div>
                                   </li>
                                   <?php endforeach; ?>
@@ -2724,22 +2747,65 @@ $(document).ready(function() {
     
     const CATEGORY_PERFORMANCE = <?= json_encode($category_performance) ?>;
     
+    let activeCategoryView = null;
+    
+    window.setActiveCategory = function(el) {
+        let cat = $(el).data('cat');
+        
+        // Toggle active state
+        if (activeCategoryView === cat) {
+            activeCategoryView = null;
+            $('.category-list-item').removeClass('bg-primary text-white').addClass('text-dark');
+            $('.category-list-item .cat-name-text').removeClass('text-white').addClass('text-dark');
+            $('#assignCategorySelect').val('');
+        } else {
+            activeCategoryView = cat;
+            $('.category-list-item').removeClass('bg-primary text-white').addClass('text-dark');
+            $('.category-list-item .cat-name-text').removeClass('text-white').addClass('text-dark');
+            $(el).removeClass('text-dark').addClass('bg-primary text-white');
+            $(el).find('.cat-name-text').removeClass('text-dark').addClass('text-white');
+            $('#assignCategorySelect').val(cat);
+        }
+        
+        renderProductList($('#catProductSearch').val());
+    };
+
     function renderProductList(filterText = '') {
         let html = '';
         const search = filterText.toLowerCase();
-        ALL_PRODUCTS.forEach(p => {
-            if (search === '' || p.nama.toLowerCase().includes(search) || p.kategori.toLowerCase().includes(search)) {
-                html += `
-                    <tr>
-                        <td class="text-center">
-                            <input class="form-check-input product-check" type="checkbox" value="${p.kode}">
-                        </td>
-                        <td class="fw-bold">${p.nama}</td>
-                        <td><span class="badge bg-secondary">${p.kategori}</span></td>
-                    </tr>
-                `;
+        
+        let displayProducts = ALL_PRODUCTS.filter(p => {
+            if (search !== '' && !p.nama.toLowerCase().includes(search) && !p.kategori.toLowerCase().includes(search)) return false;
+            
+            if (activeCategoryView) {
+                return p.kategori === activeCategoryView || p.kategori === 'Belum Dikategorikan';
+            } else {
+                return p.kategori === 'Belum Dikategorikan';
             }
         });
+        
+        if (activeCategoryView) {
+            displayProducts.sort((a, b) => {
+                let aIsCat = a.kategori === activeCategoryView ? -1 : 1;
+                let bIsCat = b.kategori === activeCategoryView ? -1 : 1;
+                return aIsCat - bIsCat;
+            });
+        }
+
+        displayProducts.forEach(p => {
+            let isChecked = activeCategoryView && p.kategori === activeCategoryView ? 'checked' : '';
+            let dataAttr = isChecked ? `data-orig-cat="${activeCategoryView}"` : '';
+            html += `
+                <tr>
+                    <td class="text-center">
+                        <input class="form-check-input product-check" type="checkbox" value="${p.kode}" ${isChecked} ${dataAttr}>
+                    </td>
+                    <td class="fw-bold">${p.nama}</td>
+                    <td><span class="badge bg-secondary">${p.kategori}</span></td>
+                </tr>
+            `;
+        });
+        
         $('#catProductList').html(html);
         updateAssignBtn();
     }
@@ -2747,6 +2813,10 @@ $(document).ready(function() {
     $('#categoryManagerModal').on('show.bs.modal', function () {
         $('#catProductSearch').val('');
         $('#checkAllProducts').prop('checked', false);
+        activeCategoryView = null;
+        $('.category-list-item').removeClass('bg-primary text-white').addClass('text-dark');
+        $('.category-list-item .cat-name-text').removeClass('text-white').addClass('text-dark');
+        $('#assignCategorySelect').val('');
         renderProductList();
     });
     
@@ -2764,12 +2834,27 @@ $(document).ready(function() {
         updateAssignBtn();
     });
     
-    $('#assignCategorySelect').on('change', updateAssignBtn);
+    $('#assignCategorySelect').on('change', function() {
+        // If they manually select a category from the dropdown instead of clicking the left list,
+        // we can either sync the activeCategoryView or just update the button.
+        let val = $(this).val();
+        let $matchingItem = $(`.category-list-item[data-cat="${val}"]`);
+        if ($matchingItem.length > 0) {
+            setActiveCategory($matchingItem[0]);
+        } else {
+            activeCategoryView = null;
+            $('.category-list-item').removeClass('bg-primary text-white').addClass('text-dark');
+            $('.category-list-item .cat-name-text').removeClass('text-white').addClass('text-dark');
+            renderProductList($('#catProductSearch').val());
+        }
+        updateAssignBtn();
+    });
     
     function updateAssignBtn() {
         let checked = $('.product-check:checked').length;
+        let uncheckedOrig = $('.product-check:not(:checked)[data-orig-cat]').length;
         let cat = $('#assignCategorySelect').val();
-        $('#btnAssignCategory').prop('disabled', checked === 0 || !cat);
+        $('#btnAssignCategory').prop('disabled', (!cat) || (checked === 0 && uncheckedOrig === 0));
     }
     
     $('#btnCreateCategory').on('click', function() {
@@ -2850,20 +2935,27 @@ $(document).ready(function() {
     $('#btnAssignCategory').on('click', function() {
         let cat = $('#assignCategorySelect').val();
         let kodes = [];
-        $('.product-check:checked').each(function() {
-            kodes.push($(this).val());
+        let unassigned_kodes = [];
+        
+        $('.product-check').each(function() {
+            if ($(this).is(':checked')) {
+                kodes.push($(this).val());
+            } else if ($(this).attr('data-orig-cat') === cat) {
+                unassigned_kodes.push($(this).val());
+            }
         });
         
-        if (!cat || kodes.length === 0) return;
+        if (!cat || (kodes.length === 0 && unassigned_kodes.length === 0)) return;
         
-        if (!confirm(`Assign ${kodes.length} iklan ke kategori "${cat}"?`)) return;
+        if (!confirm(`Simpan perubahan untuk kategori "${cat}"?\n\n${kodes.length} iklan ditambahkan/dipertahankan.\n${unassigned_kodes.length} iklan dihapus dari kategori.`)) return;
         
         $(this).prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span> Menyimpan...');
         
         $.post('monitoring_polo.php', {
             action: 'assign_category_bulk',
             category_name: cat,
-            product_kodes: kodes
+            product_kodes: kodes,
+            unassigned_kodes: unassigned_kodes
         }, function(res) {
             let data = JSON.parse(res);
             if (data.status === 'success') {
