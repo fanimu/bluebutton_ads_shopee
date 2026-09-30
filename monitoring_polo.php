@@ -575,7 +575,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                             ];
                         }
                         
-                        $data['products'][$kode]['kategori'] = $kategori;
+                        // Hanya update nama iklan jika berubah, JANGAN update kategori karena akan mereset kategori yang sudah di-assign manual
                         $data['products'][$kode]['nama'] = $nama;
                         
                         if (!isset($data['products'][$kode]['history'][$up_year][$up_month])) {

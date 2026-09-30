@@ -14,7 +14,21 @@ $top_biaya = [];
 $categories = [];
 $periode_iklan = "Tidak Diketahui";
 
-function determineCategory($name) {
+// Resolve and load json data to lookup existing categories
+$dataFile = __DIR__ . '/data_polo.json';
+$existing_data = file_exists($dataFile) ? json_decode(file_get_contents($dataFile), true) : ['products' => []];
+
+function determineCategory($name, $kode = '') {
+    global $existing_data;
+    if (isset($existing_data['products'][$kode]['kategori'])) {
+        return $existing_data['products'][$kode]['kategori'];
+    }
+    // Coba cari berdasarkan nama iklan jika kode tidak ada/cocok
+    foreach ($existing_data['products'] as $p) {
+        if (($p['nama'] ?? '') === $name && !empty($p['kategori'])) {
+            return $p['kategori'];
+        }
+    }
     return 'Belum Dikategorikan';
 }
 
@@ -59,7 +73,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['file'])) {
                     $item['_biaya'] = $biaya;
                     $item['_omzet'] = $omzet;
                     $item['_nama'] = $item['Nama Iklan'];
-                    $item['_kategori'] = determineCategory($item['_nama']);
+                    $kode_prod = $item['Kode Produk'] ?? '';
+                    $item['_kategori'] = determineCategory($item['_nama'], $kode_prod);
                     
                     if (!isset($categories[$item['_kategori']])) {
                         $categories[$item['_kategori']] = [
