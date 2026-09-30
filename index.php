@@ -15,32 +15,7 @@ $categories = [];
 $periode_iklan = "Tidak Diketahui";
 
 function determineCategory($name) {
-    $nameLower = strtolower($name);
-    if (strpos($nameLower, 'polo shirt') !== false || strpos($nameLower, 'kaos polo') !== false || strpos($nameLower, 'polo') !== false) {
-        return 'Polo Shirt';
-    } elseif (strpos($nameLower, 'celana chino') !== false || strpos($nameLower, 'chinos') !== false) {
-        return 'Celana Chino';
-    } elseif (strpos($nameLower, 'celana pendek') !== false || strpos($nameLower, 'shorts') !== false || strpos($nameLower, 'cargo pendek') !== false) {
-        return 'Celana Pendek';
-    } elseif (strpos($nameLower, 'celana bahan') !== false || strpos($nameLower, 'celana panjang') !== false || strpos($nameLower, 'ankle pants') !== false || strpos($nameLower, 'easy pants') !== false || strpos($nameLower, 'trouser') !== false) {
-        return 'Celana Panjang / Formal';
-    } elseif (strpos($nameLower, 'kemeja') !== false || strpos($nameLower, 'oxford') !== false || strpos($nameLower, 'shirt') !== false) { 
-        return 'Kemeja';
-    } elseif (strpos($nameLower, 'rompi') !== false || strpos($nameLower, 'vest') !== false) {
-        return 'Rompi / Vest';
-    } elseif (strpos($nameLower, 'parfum') !== false || strpos($nameLower, 'edp') !== false) {
-        return 'Parfum';
-    } elseif (strpos($nameLower, 'sweater') !== false || strpos($nameLower, 'crewneck') !== false) {
-        return 'Sweater';
-    } elseif (strpos($nameLower, 'jaket') !== false || strpos($nameLower, 'jacket') !== false) {
-        return 'Jaket';
-    } elseif (strpos($nameLower, 'kaos kaki') !== false || strpos($nameLower, 'sock') !== false || strpos($nameLower, 'belt') !== false || strpos($nameLower, 'sabuk') !== false || strpos($nameLower, 'gesper') !== false) {
-        return 'Aksesoris';
-    } elseif (strpos($nameLower, 'tanktop') !== false || strpos($nameLower, 'wanita') !== false) {
-        return 'Pakaian Wanita';
-    } else {
-        return 'Lainnya';
-    }
+    return 'Lainnya';
 }
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['file'])) {

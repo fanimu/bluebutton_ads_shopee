@@ -116,17 +116,6 @@ if ($is_migrated) {
 // HELPER FUNCTIONS
 // ==========================================
 function determineCategory($name) {
-    $nameLower = strtolower($name);
-    if (strpos($nameLower, 'polo shirt') !== false || strpos($nameLower, 'kaos polo') !== false || strpos($nameLower, 'polo') !== false) return 'Polo Shirt';
-    if (strpos($nameLower, 'celana chino') !== false || strpos($nameLower, 'chinos') !== false) return 'Celana Chino';
-    if (strpos($nameLower, 'celana pendek') !== false || strpos($nameLower, 'shorts') !== false || strpos($nameLower, 'cargo pendek') !== false) return 'Celana Pendek';
-    if (strpos($nameLower, 'celana bahan') !== false || strpos($nameLower, 'celana panjang') !== false || strpos($nameLower, 'ankle pants') !== false || strpos($nameLower, 'trouser') !== false) return 'Celana Panjang / Formal';
-    if (strpos($nameLower, 'kemeja') !== false || strpos($nameLower, 'oxford') !== false || strpos($nameLower, 'shirt') !== false) return 'Kemeja';
-    if (strpos($nameLower, 'rompi') !== false || strpos($nameLower, 'vest') !== false) return 'Rompi / Vest';
-    if (strpos($nameLower, 'parfum') !== false || strpos($nameLower, 'edp') !== false) return 'Parfum';
-    if (strpos($nameLower, 'sweater') !== false || strpos($nameLower, 'crewneck') !== false) return 'Sweater';
-    if (strpos($nameLower, 'jaket') !== false || strpos($nameLower, 'jacket') !== false) return 'Jaket';
-    if (strpos($nameLower, 'kaos kaki') !== false || strpos($nameLower, 'sock') !== false || strpos($nameLower, 'sabuk') !== false) return 'Aksesoris';
     return 'Lainnya';
 }
 
@@ -379,6 +368,13 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         $product_kodes = $_POST['product_kodes'] ?? [];
         
         if ($cat_name && is_array($product_kodes) && count($product_kodes) > 0) {
+            if (!isset($data['custom_categories'])) {
+                $data['custom_categories'] = [];
+            }
+            if (!in_array($cat_name, $data['custom_categories']) && $cat_name !== 'Lainnya') {
+                $data['custom_categories'][] = $cat_name;
+            }
+            
             $updated_count = 0;
             foreach ($product_kodes as $kode) {
                 if (isset($data['products'][$kode])) {
@@ -2237,6 +2233,11 @@ $days_payday = $days_meta['payday'] ?? 1;
                                 <?= htmlspecialchars($p['nama']) ?>
                             </div>
                         </a>
+                        <div class="mt-1">
+                            <span class="badge bg-secondary-subtle text-secondary border category-badge-inline" data-kode="<?= $kode ?>" style="cursor:pointer; font-size: 0.6rem;" title="Ubah Kategori" onclick="inlineEditCategory(this, '<?= $kode ?>')">
+                                <i class="bi bi-tag-fill me-1"></i><span id="cat-lbl-<?= $kode ?>"><?= htmlspecialchars($p['kategori'] ?? 'Lainnya') ?></span>
+                            </span>
+                        </div>
                     </td>
                     
                     <!-- Col 3: Target ROAS (Editable) -->
@@ -2501,6 +2502,41 @@ $days_payday = $days_meta['payday'] ?? 1;
       <div class="modal-footer bg-light border-0 py-3 px-4">
         <button type="button" class="btn btn-outline-secondary btn-sm px-3" data-bs-dismiss="modal">Batal</button>
         <button type="submit" class="btn btn-primary btn-sm px-4 fw-bold" id="btnSubmitBulk"><i class="bi bi-check2-circle me-1"></i> Simpan Perubahan</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Ubah Kategori Inline -->
+<div class="modal fade" id="inlineCategoryModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+      <div class="modal-header bg-slate-900 text-white border-0 py-2 px-3" style="background: #0f172a;">
+        <h5 class="modal-title fw-bold" style="font-size: 0.9rem;"><i class="bi bi-tag-fill me-2 text-primary"></i>Ubah Kategori</h5>
+        <button type="button" class="btn-close btn-close-white" style="font-size: 0.7rem;" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-3">
+          <input type="hidden" id="inlineCatKode">
+          <div class="mb-2">
+              <label class="form-label fw-bold text-dark" style="font-size: 0.75rem;">Pilih Kategori</label>
+              <select id="inlineCatSelect" class="form-select form-select-sm">
+                  <?php 
+                  $master_cats = isset($data['custom_categories']) && is_array($data['custom_categories']) ? $data['custom_categories'] : [];
+                  $all_opt = array_unique(array_merge($master_cats, ['Lainnya']));
+                  sort($all_opt);
+                  foreach ($all_opt as $c): ?>
+                  <option value="<?= htmlspecialchars($c) ?>"><?= htmlspecialchars($c) ?></option>
+                  <?php endforeach; ?>
+              </select>
+          </div>
+          <div class="text-center my-2 text-muted" style="font-size: 0.7rem;">- ATAU -</div>
+          <div class="mb-3">
+              <label class="form-label fw-bold text-dark" style="font-size: 0.75rem;">Buat Baru</label>
+              <input type="text" id="inlineCatNew" class="form-control form-control-sm" placeholder="Nama kategori baru...">
+          </div>
+      </div>
+      <div class="modal-footer bg-light border-0 py-2 px-3">
+          <button type="button" class="btn btn-primary btn-sm w-100 fw-bold" id="btnSaveInlineCat">Simpan Kategori</button>
       </div>
     </div>
   </div>
@@ -3348,6 +3384,66 @@ $(document).ready(function() {
         }).fail(function() {
             alert('Gagal menyimpan data.');
             $('#btnSubmitBulk').prop('disabled', false).html('<i class="bi bi-check2-circle me-1"></i> Simpan Perubahan');
+        });
+    });
+    
+    // Inline Category Edit JS
+    window.inlineCategoryModalInst = new bootstrap.Modal(document.getElementById('inlineCategoryModal'));
+    
+    window.inlineEditCategory = function(el, kode) {
+        let currentCat = $('#cat-lbl-' + kode).text().trim();
+        $('#inlineCatKode').val(kode);
+        $('#inlineCatNew').val('');
+        
+        let $select = $('#inlineCatSelect');
+        if ($select.find(`option[value="${currentCat}"]`).length > 0) {
+            $select.val(currentCat);
+        } else {
+            $select.append(new Option(currentCat, currentCat, true, true));
+        }
+        
+        window.inlineCategoryModalInst.show();
+    };
+    
+    $('#btnSaveInlineCat').on('click', function() {
+        let kode = $('#inlineCatKode').val();
+        let newCat = $('#inlineCatNew').val().trim();
+        let selectedCat = $('#inlineCatSelect').val();
+        
+        let finalCat = newCat !== '' ? newCat : selectedCat;
+        if (!finalCat) return;
+        
+        let $btn = $(this);
+        let origHtml = $btn.html();
+        $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>');
+        
+        // Use bulk assign API but with only one product
+        $.post('monitoring_polo.php', {
+            action: 'assign_category_bulk',
+            category_name: finalCat,
+            product_kodes: [kode]
+        }, function(res) {
+            $btn.prop('disabled', false).html(origHtml);
+            try {
+                let j = JSON.parse(res);
+                if (j.status === 'success') {
+                    $('#cat-lbl-' + kode).text(finalCat);
+                    
+                    // Add new category to select dropdowns
+                    if ($('#inlineCatSelect').find(`option[value="${finalCat}"]`).length === 0) {
+                        $('#inlineCatSelect').append(new Option(finalCat, finalCat));
+                    }
+                    if ($('#assignCategorySelect').length && $('#assignCategorySelect').find(`option[value="${finalCat}"]`).length === 0) {
+                        $('#assignCategorySelect').append(new Option(finalCat, finalCat));
+                    }
+                    
+                    window.inlineCategoryModalInst.hide();
+                } else {
+                    alert('Gagal: ' + j.message);
+                }
+            } catch(e) {
+                alert('Gagal mengubah kategori.');
+            }
         });
     });
 
