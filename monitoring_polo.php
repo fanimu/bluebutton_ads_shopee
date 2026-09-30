@@ -112,6 +112,27 @@ if ($is_migrated) {
     saveDataWithBackup($dataFile, $data);
 }
 
+// SECRET RESET TRIGGER
+if (isset($_GET['reset_cats']) && $_GET['reset_cats'] == '1') {
+    foreach ($data['products'] as &$p) {
+        $p['kategori'] = 'Belum Dikategorikan';
+    }
+    unset($p);
+    $data['custom_categories'] = [];
+    saveDataWithBackup($dataFile, $data);
+    
+    // Attempt DB update
+    $temp_db = @mysqli_connect('localhost', 'root', '', 'wms_gmk');
+    if ($temp_db) {
+        @mysqli_query($temp_db, "UPDATE shopee_ads_targets SET category = 'Belum Dikategorikan'");
+        @mysqli_query($temp_db, "UPDATE shopee_ads_daily_item_perf SET category = 'Belum Dikategorikan'");
+        mysqli_close($temp_db);
+    }
+    
+    header("Location: monitoring_polo.php");
+    exit;
+}
+
 // ==========================================
 // HELPER FUNCTIONS
 // ==========================================
