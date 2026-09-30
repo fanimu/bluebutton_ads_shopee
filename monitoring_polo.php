@@ -2616,8 +2616,8 @@ $days_payday = $days_meta['payday'] ?? 1;
                                   <li class="list-group-item d-flex justify-content-between align-items-center px-2 py-2 category-list-item" style="cursor: pointer;" data-cat="<?= htmlspecialchars($c) ?>" onclick="setActiveCategory(this)">
                                       <span class="fw-medium text-dark cat-name-text" style="font-size: 0.8rem; pointer-events: none;"><?= htmlspecialchars($c) ?></span>
                                       <div class="btn-group">
-                                          <button class="btn btn-sm btn-light border text-primary btn-rename-cat" data-cat="<?= htmlspecialchars($c) ?>" title="Ganti Nama" onclick="event.stopPropagation();"><i class="bi bi-pencil-square"></i></button>
-                                          <button class="btn btn-sm btn-light border text-danger btn-delete-cat" data-cat="<?= htmlspecialchars($c) ?>" title="Hapus" onclick="event.stopPropagation();"><i class="bi bi-trash"></i></button>
+                                          <button class="btn btn-sm btn-light border text-primary btn-rename-cat" data-cat="<?= htmlspecialchars($c) ?>" title="Ganti Nama"><i class="bi bi-pencil-square"></i></button>
+                                          <button class="btn btn-sm btn-light border text-danger btn-delete-cat" data-cat="<?= htmlspecialchars($c) ?>" title="Hapus"><i class="bi bi-trash"></i></button>
                                       </div>
                                   </li>
                                   <?php endforeach; ?>
@@ -2880,7 +2880,8 @@ $(document).ready(function() {
         });
     });
     
-    $(document).on('click', '.btn-rename-cat', function() {
+    $(document).on('click', '.btn-rename-cat', function(e) {
+        e.stopPropagation();
         let oldName = $(this).data('cat');
         let newName = prompt('Masukkan nama baru untuk kategori "' + oldName + '":', oldName);
         
@@ -2909,7 +2910,8 @@ $(document).ready(function() {
         }
     });
 
-    $(document).on('click', '.btn-delete-cat', function() {
+    $(document).on('click', '.btn-delete-cat', function(e) {
+        e.stopPropagation();
         let cat = $(this).data('cat');
         if (!confirm('Yakin ingin menghapus kategori "' + cat + '"?\n\nIklan yang ada di kategori ini akan dikembalikan ke "Belum Dikategorikan".')) return;
         
