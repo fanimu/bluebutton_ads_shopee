@@ -116,7 +116,7 @@ if ($is_migrated) {
 // HELPER FUNCTIONS
 // ==========================================
 function determineCategory($name) {
-    return 'Lainnya';
+    return 'Belum Dikategorikan';
 }
 
 function determineBrand($name) {
@@ -125,7 +125,7 @@ function determineBrand($name) {
     if (strpos($nameClean, 'privateproject') !== false) return 'Private Project';
     if (strpos($nameClean, 'littlepampered') !== false) return 'Little Pampered';
     if (strpos($nameClean, 'olere') !== false) return 'Olere';
-    return 'Lainnya';
+    return 'Belum Dikategorikan';
 }
 
 function formatShopeeDateRange($date_str) {
@@ -211,8 +211,8 @@ $default_month = $latest_month_with_data ?? $current_system_month;
 
 $filter_year = isset($_GET['year']) && !empty($_GET['year']) ? (string)$_GET['year'] : (isset($_POST['up_year']) && !empty($_POST['up_year']) ? (string)$_POST['up_year'] : $default_year);
 $filter_month = isset($_GET['month']) && !empty($_GET['month']) ? str_pad($_GET['month'], 2, '0', STR_PAD_LEFT) : (isset($_POST['up_month']) && !empty($_POST['up_month']) ? str_pad($_POST['up_month'], 2, '0', STR_PAD_LEFT) : $default_month);
-$all_brands = ['BLUEBUTTON', 'Private Project', 'Little Pampered', 'Olere', 'Lainnya'];
-$filter_category = $_GET['cat'] ?? ($_POST['filter_category'] ?? 'Polo Shirt');
+$all_brands = ['BLUEBUTTON', 'Private Project', 'Little Pampered', 'Olere', 'Belum Dikategorikan'];
+$filter_category = $_GET['cat'] ?? ($_POST['filter_category'] ?? 'Semua');
 $filter_brand = trim((string)($_GET['brand'] ?? ($_POST['filter_brand'] ?? 'Semua')));
 if ($filter_brand !== '' && strcasecmp($filter_brand, 'Semua') !== 0) {
     $norm_filter = strtolower(str_replace([' ', '-', '_'], '', $filter_brand));
@@ -256,7 +256,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             if ($db_conn && ($field === 'target_roas' || $field === 'target_qty')) {
                 $c_id = $data['products'][$kode]['kode'] ?? $kode;
                 $ad_name = $data['products'][$kode]['nama'] ?? '';
-                $cat = $data['products'][$kode]['kategori'] ?? 'POLO SHIRT';
+                $cat = $data['products'][$kode]['kategori'] ?? 'Belum Dikategorikan';
 
                 $c_id_esc = mysqli_real_escape_string($db_conn, $c_id);
                 $ad_name_esc = mysqli_real_escape_string($db_conn, $ad_name);
@@ -328,7 +328,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                 $m_p = $data['products'][$mkode];
                 $c_id_esc = mysqli_real_escape_string($db_conn, $m_p['kode'] ?? $mkode);
                 $ad_name_esc = mysqli_real_escape_string($db_conn, $m_p['nama'] ?? '');
-                $cat_esc = mysqli_real_escape_string($db_conn, strtoupper($m_p['kategori'] ?? 'POLO SHIRT'));
+                $cat_esc = mysqli_real_escape_string($db_conn, strtoupper($m_p['kategori'] ?? 'Belum Dikategorikan'));
 
                 mysqli_query($db_conn, "UPDATE shopee_ads_targets 
                                        SET $field = $val_num, updated_at = NOW() 
@@ -371,7 +371,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             if (!isset($data['custom_categories'])) {
                 $data['custom_categories'] = [];
             }
-            if (!in_array($cat_name, $data['custom_categories']) && $cat_name !== 'Lainnya') {
+            if (!in_array($cat_name, $data['custom_categories']) && $cat_name !== 'Belum Dikategorikan') {
                 $data['custom_categories'][] = $cat_name;
             }
             
@@ -453,10 +453,10 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             }
             foreach ($data['products'] as $kode => &$p) {
                 if (($p['kategori'] ?? '') === $cat_name) {
-                    $p['kategori'] = 'Lainnya';
+                    $p['kategori'] = 'Belum Dikategorikan';
                     if ($db_conn) {
                         $c_id_esc = mysqli_real_escape_string($db_conn, $kode);
-                        mysqli_query($db_conn, "UPDATE shopee_ads_targets SET category = 'LAINNYA', updated_at = NOW() WHERE campaign_id = '$c_id_esc'");
+                        mysqli_query($db_conn, "UPDATE shopee_ads_targets SET category = 'Belum Dikategorikan', updated_at = NOW() WHERE campaign_id = '$c_id_esc'");
                     }
                 }
             }
@@ -668,7 +668,7 @@ if ($db_conn) {
         while ($rdb = mysqli_fetch_assoc($q_db_res)) {
             $ad_name = $rdb['ad_name'];
             $c_id = $rdb['campaign_id'];
-            $cat_name = !empty($rdb['category']) && $rdb['category'] !== 'Uncategorized' ? $rdb['category'] : determineCategory($ad_name);
+            $cat_name = 'Belum Dikategorikan';
 
             // Cari matching product di JSON atau buat baru
             $matched_kode = null;
@@ -846,7 +846,7 @@ $kpi_bad_count = 0;
 foreach ($data['products'] as $kode => $p) {
     $brand = determineBrand($p['nama'] ?? '');
     
-    $cat = $p['kategori'] ?? 'Lainnya';
+    $cat = $p['kategori'] ?? 'Belum Dikategorikan';
     $brand_match = ($filter_brand === 'Semua' || strcasecmp(str_replace(' ', '', $brand), str_replace(' ', '', $filter_brand)) === 0);
     
     if ($brand_match) {
@@ -2235,7 +2235,7 @@ $days_payday = $days_meta['payday'] ?? 1;
                         </a>
                         <div class="mt-1">
                             <span class="badge bg-secondary-subtle text-secondary border category-badge-inline" data-kode="<?= $kode ?>" style="cursor:pointer; font-size: 0.6rem;" title="Ubah Kategori" onclick="inlineEditCategory(this, '<?= $kode ?>')">
-                                <i class="bi bi-tag-fill me-1"></i><span id="cat-lbl-<?= $kode ?>"><?= htmlspecialchars($p['kategori'] ?? 'Lainnya') ?></span>
+                                <i class="bi bi-tag-fill me-1"></i><span id="cat-lbl-<?= $kode ?>"><?= htmlspecialchars($p['kategori'] ?? 'Belum Dikategorikan') ?></span>
                             </span>
                         </div>
                     </td>
@@ -2522,7 +2522,7 @@ $days_payday = $days_meta['payday'] ?? 1;
               <select id="inlineCatSelect" class="form-select form-select-sm">
                   <?php 
                   $master_cats = isset($data['custom_categories']) && is_array($data['custom_categories']) ? $data['custom_categories'] : [];
-                  $all_opt = array_unique(array_merge($master_cats, ['Lainnya']));
+                  $all_opt = array_unique(array_merge($master_cats, ['Belum Dikategorikan']));
                   sort($all_opt);
                   foreach ($all_opt as $c): ?>
                   <option value="<?= htmlspecialchars($c) ?>"><?= htmlspecialchars($c) ?></option>
@@ -2697,7 +2697,7 @@ $(document).ready(function() {
         return [
             'kode' => $k,
             'nama' => $p['nama'],
-            'kategori' => $p['kategori'] ?? 'Lainnya'
+            'kategori' => $p['kategori'] ?? 'Belum Dikategorikan'
         ];
     }, array_keys($data['products']), $data['products']))) ?>;
     
@@ -2805,7 +2805,7 @@ $(document).ready(function() {
 
     $(document).on('click', '.btn-delete-cat', function() {
         let cat = $(this).data('cat');
-        if (!confirm('Yakin ingin menghapus kategori "' + cat + '"?\n\nIklan yang ada di kategori ini akan dikembalikan ke "Lainnya".')) return;
+        if (!confirm('Yakin ingin menghapus kategori "' + cat + '"?\n\nIklan yang ada di kategori ini akan dikembalikan ke "Belum Dikategorikan".')) return;
         
         $(this).prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span>');
         

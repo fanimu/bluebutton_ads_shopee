@@ -15,7 +15,7 @@ $categories = [];
 $periode_iklan = "Tidak Diketahui";
 
 function determineCategory($name) {
-    return 'Lainnya';
+    return 'Belum Dikategorikan';
 }
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['file'])) {
